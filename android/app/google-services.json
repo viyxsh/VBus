@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "346272990598",
+    "project_id": "vbus-bb3f0",
+    "storage_bucket": "vbus-bb3f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:346272990598:android:eb9bbd9752802da2d1d807",
+        "android_client_info": {
+          "package_name": "com.vbuss.vbuss"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJqxchhN-ZNxSGU8qvlXa2wEWaczUr9es"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
