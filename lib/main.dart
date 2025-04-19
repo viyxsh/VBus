@@ -63,32 +63,74 @@ class _UserStatusCheckState extends State<UserStatusCheck> {
   Future<void> _checkUserStatus() async {
     final User? user = FirebaseAuth.instance.currentUser;
 
+    // If no user is logged in, go to login screen
     if (user == null) {
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/login');
       }
       return;
     }
-    // if a user is logged in then query the users collection in Firestore using UID to check if their profile exists
+
+    // Check if this is an anonymous user (conductor)
+    if (user.isAnonymous) {
+      try {
+        // Try to find the conductor document by querying the firebaseUid field
+        final conductorQuery = await FirebaseFirestore.instance
+            .collection('conductors')
+            .where('firebaseUid', isEqualTo: user.uid)
+            .limit(1)
+            .get();
+
+        if (!mounted) return;
+
+        if (conductorQuery.docs.isEmpty) {
+          // No conductor found with this UID, sign out and go to login
+          await FirebaseAuth.instance.signOut();
+          Navigator.of(context).pushReplacementNamed('/login');
+        } else {
+          // Conductor found, check if profile is complete
+          final conductorDoc = conductorQuery.docs.first;
+          if (conductorDoc.data().containsKey('name') &&
+              conductorDoc.data().containsKey('phoneNumber') &&
+              conductorDoc.data().containsKey('busNumber')) {
+            // Profile is complete, go to conductor home
+            Navigator.of(context).pushReplacementNamed('/conductorHome');
+          } else {
+            // Profile is incomplete, go to profile setup
+            Navigator.of(context).pushReplacementNamed('/conductorProfileSetup');
+          }
+        }
+        return;
+      } catch (e) {
+        print('Error checking conductor status: $e');
+        if (!mounted) return;
+        // On error, sign out and go to login
+        await FirebaseAuth.instance.signOut();
+        Navigator.of(context).pushReplacementNamed('/login');
+        return;
+      }
+    }
+
+    // For non-anonymous users (students/faculty with Google sign-in)
     try {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
-      // if the user document doesn’t exist then check the email domain
-      // redirect to the profile setup page if the email ends with @vitbhopal.ac.in otherwise to the cond profile setup
+
       if (!mounted) return;
 
       if (!userDoc.exists) {
+        // Profile doesn't exist, check email domain for student/faculty
         if (user.email != null && user.email!.endsWith('@vitbhopal.ac.in')) {
           Navigator.of(context).pushReplacementNamed('/studentProfileSetup');
         } else {
-          Navigator.of(context).pushReplacementNamed('/conductorProfileSetup');
+          // Not a valid student email, sign out and go to login
+          await FirebaseAuth.instance.signOut();
+          Navigator.of(context).pushReplacementNamed('/login');
         }
-      }
-      // if the user document exists then retrieve the user’s role (student/faculty)
-      // redirect to the StudentApp for students/faculty or /conductorHome for others
-      else {
+      } else {
+        // Profile exists, check role
         final String role = userDoc.data()?['role'] ?? '';
         if (role == 'student' || role == 'faculty') {
           Navigator.of(context).pushReplacement(
@@ -100,24 +142,28 @@ class _UserStatusCheckState extends State<UserStatusCheck> {
           Navigator.of(context).pushReplacementNamed('/conductorHome');
         }
       }
-    }
-    // handle errors during status check
-    catch (e) {
+    } catch (e) {
       print('Error in UserStatusCheck: $e');
       if (!mounted) return;
+
+      // Handle errors
       if (e.toString().contains('permission-denied')) {
-        final String? email = user?.email;
+        // Check if valid student email
+        final String? email = user.email;
         if (email != null && email.endsWith('@vitbhopal.ac.in')) {
           Navigator.of(context).pushReplacementNamed('/studentProfileSetup');
         } else {
-          Navigator.of(context).pushReplacementNamed('/conductorProfileSetup');
+          // Not a valid student email, sign out
+          await FirebaseAuth.instance.signOut();
+          Navigator.of(context).pushReplacementNamed('/login');
         }
       } else {
+        // Other errors, sign out and go to login
+        await FirebaseAuth.instance.signOut();
         Navigator.of(context).pushReplacementNamed('/login');
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
