@@ -3,7 +3,8 @@ import 'package:vbuss/screens/student/seat_booking_screen.dart';
 import 'package:vbuss/screens/common/profile_screens.dart';
 import 'package:vbuss/screens/common/map.dart';
 import 'package:vbuss/screens/common/inbox.dart';
-import 'package:vbuss/screens/student/notifications.dart'; 
+import 'package:vbuss/screens/student/notifications.dart';
+import 'package:vbuss/screens/common/google_map.dart';
 
 class StudentApp extends StatefulWidget {
   final String userType;
@@ -24,7 +25,8 @@ class _StudentAppState extends State<StudentApp> {
     super.initState();
     //set up the screen widgets list using userType for Seat Booking
     _screens = [
-      const BusMap(),
+      // const BusMap(),
+      const GoogleMapScreen(),
       const InboxScreen(isConductor: false),
       SeatBookingScreen(userType: widget.userType),
       const StudentProfileScreen(),
