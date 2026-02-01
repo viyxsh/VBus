@@ -1,12 +1,14 @@
-# 🚌 VBus – University Bus Tracking App
+# VBus – University Bus Tracking App
 
 VBus is a real-time bus tracking system built for **VIT Bhopal University**. It streamlines bus travel for students, faculty, and conductors by offering real-time updates, seat booking, attendance management, and more — all within a unified Flutter app.
 
+**Note**: This project is currently being rebuilt with enhanced features and improved architecture. Check out the new version [here](https://github.com/viyxsh/vbus_rebuilt).
+
 ---
 
-## 🚀 Features
+## Features
 
-### 🎓 For Students and Faculty
+### For Students and Faculty
 - Google Sign-In using university email (`@vitbhopal.ac.in`)
 - Bus route map with live tracking
 - Real-time bus stop updates
@@ -15,7 +17,7 @@ VBus is a real-time bus tracking system built for **VIT Bhopal University**. It 
 - Profile setup and editing
 - Inbox and chat with conductor
 
-### 🧑‍✈️ For Conductors
+### For Conductors
 - Secure login with university-provided credentials
 - Attendance management with QR scanning and status tracking
 - Real-time passenger list with filtering options
@@ -24,7 +26,17 @@ VBus is a real-time bus tracking system built for **VIT Bhopal University**. It 
 
 ---
 
-## 🛠 Project Structure Overview
+## Screenshots
+
+Below are screenshots of the current VBus app:
+
+| Login Page    | Map Screen     | Seat Booking Screen | Attendance Screen | Attendance Screen 2 | Inbox Screen | Profile Screen |
+|----------------|----------------|--------------------|-------------------|---------------------|--------------|---------------|
+| ![Login Page](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/loginpage.png) | ![Map Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/mapscreen.png) | ![Seat Booking Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/seatbookingscreen.png) | ![Attendance Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/attenscreen.png) | ![Attendance Screen 2](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/attenscreen2.png) | ![Inbox Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/inboxscreen.png) | ![Profile Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/profilescreen.png) |
+
+---
+
+## Project Structure Overview
 
 | File | Description |
 |------|-------------|
@@ -48,21 +60,18 @@ VBus is a real-time bus tracking system built for **VIT Bhopal University**. It 
 
 ---
 
-## 📦 Tech Stack
+## Tech Stack
 
 - **Flutter** (Frontend UI)
 - **Firebase Auth** (Authentication)
 - **Firebase Firestore** (Database)
 - **Firebase Storage** (Image and file uploads)
-- **OpenStreetMap / flutter_map** (Map integration)
+- **Google Maps / flutter_map** (Map integration)
 
 ---
 
-## 📌 Future Improvements
+## Future Improvements
 
 - Real-time bus location updates using GPS
 - Bus delay statistics and wait request analytics
 - Hindi language support for conductors
-
-
-
