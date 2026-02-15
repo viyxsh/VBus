@@ -1,3 +1,11 @@
+# Environment / secrets
+.env.json
+# Google Maps API key — injected at build time, never committed
+ios/Flutter/Secrets.xcconfig
+
+# Local tooling
+.claude/
+
 # Miscellaneous
 *.class
 *.log
@@ -43,6 +51,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-android/app/src/main/AndroidManifest.xml
-ios/Runner/AppDelegate.swift
-ios/Runner/Info.plist

@@ -1,77 +1,282 @@
-# VBus – University Bus Tracking App
+# VBUS - VIT Bhopal University Bus Tracking System
 
-VBus is a real-time bus tracking system built for **VIT Bhopal University**. It streamlines bus travel for students, faculty, and conductors by offering real-time updates, seat booking, attendance management, and more — all within a unified Flutter app.
-
-**Note**: This project is currently being rebuilt with enhanced features and improved architecture. Check out the new version [here](https://github.com/viyxsh/vbus_rebuilt).
+A Flutter application for managing and tracking university bus transport at VIT Bhopal. The system serves two user roles - passengers (students and faculty) and conductors - with a shared Supabase backend.
 
 ---
 
-## Features
+## Table of Contents
 
-### For Students and Faculty
-- Google Sign-In using university email (`@vitbhopal.ac.in`)
-- Bus route map with live tracking
-- Real-time bus stop updates
-- Seat booking
-- Notifications for bus arrival
-- Profile setup and editing
-- Inbox and chat with conductor
-
-### For Conductors
-- Secure login with university-provided credentials
-- Attendance management with QR scanning and status tracking
-- Real-time passenger list with filtering options
-- Bus details setup and profile editing
-- Chat and inbox functionality
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Features](#features)
+  - [Passenger Features](#passenger-features)
+  - [Conductor Features](#conductor-features)
+  - [Shared Features](#shared-features)
+- [Project Structure](#project-structure)
+- [Database Schema](#database-schema)
+- [Getting Started](#getting-started)
+- [Environment Setup](#environment-setup)
+- [Running the App](#running-the-app)
+- [Running Tests](#running-tests)
+- [Known Limitations](#known-limitations)
 
 ---
 
-## Screenshots
+## Overview
 
-Below are screenshots of the current VBus app:
-
-| Login Page    | Map Screen     | Seat Booking Screen | Attendance Screen | Attendance Screen 2 | Inbox Screen | Profile Screen |
-|----------------|----------------|--------------------|-------------------|---------------------|--------------|---------------|
-| ![Login Page](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/loginpage.png) | ![Map Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/mapscreen.png) | ![Seat Booking Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/seatbookingscreen.png) | ![Attendance Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/attenscreen.png) | ![Attendance Screen 2](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/attenscreen2.png) | ![Inbox Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/inboxscreen.png) | ![Profile Screen](https://raw.githubusercontent.com/viyxsh/VBus/main/screenshots/profilescreen.png) |
-
----
-
-## Project Structure Overview
-
-| File | Description |
-|------|-------------|
-| `main.dart` | Initializes Firebase, splash screen, and routes based on user authentication |
-| `login_screen.dart` | Manages account type selection and login methods for students and conductors |
-| `splash_screen.dart` | Displays an animated splash screen and redirects based on user status |
-| `student_app.dart` | Bottom navigation for students: Map, Inbox, Seat Booking, Profile |
-| `conductor_app.dart` | Bottom navigation for conductors: Map, Inbox, Attendance, Profile |
-| `map.dart` | Bus route display with live location and stop status |
-| `seat_booking_screen.dart` | Handles seat booking with timer and auto-allocation |
-| `bus1_layout.dart` | Displays bus seating layout with interactive seat widgets |
-| `seat_widget.dart` | Interactive widget to represent and manage individual seat states |
-| `notifications.dart` | Sends alerts for bus arrivals |
-| `attendance_screen.dart` | Manages attendance, stop tracking, and QR scanning |
-| `chat_screen.dart` | Chat interface with messaging, calling, and voice support |
-| `inbox.dart` | Displays all user chats |
-| `profile_screens.dart` | Profile viewing for student and conductor with options |
-| `edit_profile_screens.dart` | Allows users to edit personal and bus-related information |
-| `student/profile_setup.dart` | Student profile setup with bus details and Firestore integration |
-| `conductor/profile_setup.dart` | Conductor profile setup with bus and personal info |
+VBUS replaces manual attendance, paper-based seat booking, and informal communication between bus conductors and passengers at VIT Bhopal. The app supports buses running routes across Bhopal, Sehore, and Ashta districts.
 
 ---
 
 ## Tech Stack
 
-- **Flutter** (Frontend UI)
-- **Firebase Auth** (Authentication)
-- **Firebase Firestore** (Database)
-- **Firebase Storage** (Image and file uploads)
-- **Google Maps / flutter_map** (Map integration)
+| Layer | Technology |
+|---|---|
+| Framework | Flutter (Dart) |
+| State management | Riverpod 2.x (code generation) |
+| Navigation | go_router |
+| Backend | Supabase (PostgreSQL, Auth, Realtime, Storage) |
+| Maps | Google Maps Flutter + OSRM (free road-following routing) |
+| OCR | Google ML Kit Text Recognition |
+| Notifications | flutter_local_notifications |
+| Authentication | Google OAuth (passengers), username/password (conductors) |
 
 ---
 
-## Future Improvements
+## Features
 
-- Real-time bus location updates using GPS
-- Bus delay statistics and wait request analytics
-- Hindi language support for conductors
+### Passenger Features
+
+**Registration and Approval**
+- Sign in with a VIT Bhopal Google account (@vitbhopal.ac.in)
+- Complete a registration form with name, institute ID, phone, bus selection, boarding stop, and fee receipt upload
+- Accounts remain in a pending state until approved
+
+**Live Bus Tracking**
+- Map view showing the full bus route as a road-following polyline sourced from OSRM (no Directions API cost)
+- When a trip is active, a live bus marker updates in real time via Supabase Realtime
+- When no trip is active, the map shows the static route for reference
+- Recenter and zoom controls built into the map
+- Custom stop pins: long-press anywhere on the map to drop a named pin with a configurable arrival notification threshold (2, 5, 10, or 15 minutes before the bus arrives)
+
+**Seat Booking**
+- Booking window opens at 8:00 PM for the following day's trip
+- Bookings can be edited until 7:00 PM on the day of the trip
+- Seats are colour-coded: orange for faculty-reserved rows, red for student rows
+- Tap a booked seat to see who reserved it
+- A daily cron job (pg_cron) purges records older than 7 days while retaining a 7-day history
+- History is accessible from the profile screen
+
+**Inbox**
+- Broadcast group chat with the entire bus
+- Private one-to-one chat with the conductor
+- In-app call button for private chats that opens the native dialer
+- Info panel showing the other party's name, phone, ID, user type, and boarding stop
+
+**Profile**
+- Edit name and phone number
+- View and remove custom map pins
+- Toggle seat booking reminders and custom pin arrival notifications
+- View 7-day seat booking history
+
+---
+
+### Conductor Features
+
+**Attendance**
+- Start a trip to automatically generate attendance records for all approved passengers on the bus
+- The current stop advances automatically as the conductor's GPS moves within 300 metres of the next stop - no manual button required
+- Scan a passenger's VIT ID card using the device camera; the OCR engine extracts the registration number and marks the passenger as present
+- Passengers at stops the bus has passed without scanning are marked as missing automatically
+- At trip end, remaining waiting passengers are marked as absent
+- Filter the list by status (Total, Present, Missed, Absent, Waiting) and search by name
+- End the trip manually from the app bar
+
+**Live Map**
+- Same road-following polyline as the passenger view
+- The conductor's own GPS location is shown as a live bus marker at all times
+- Location is broadcast to Supabase only during an active trip so passengers can track the bus
+- Recenter and zoom controls built into the map
+
+**Bus Controls**
+- Adjust the number of faculty-reserved rows on the left and right sides of the bus from the profile screen
+- Changes take effect immediately for all passengers
+
+**Manage Passengers**
+- Search and view all approved passengers on the bus
+- Remove a passenger from the bus
+
+**Inbox**
+- Broadcast group chat with all passengers
+- Private one-to-one chats with individual passengers
+- Start a new private chat with any approved passenger using the compose button
+- In-app call button for private chats
+
+---
+
+### Shared Features
+
+- Real-time messaging using Supabase Realtime with INSERT subscriptions on the messages table
+- Messages display sender name, timestamp, and a preview in the inbox
+- Local notifications for seat booking reminders and bus proximity alerts
+- All data is protected by row-level security policies on Supabase
+
+---
+
+## Project Structure
+
+```
+lib/
+  app/
+    router/           # go_router configuration and redirect logic
+  core/
+    constants/        # AppConfig (Supabase URL, anon key)
+    enums/            # ApprovalStatus, UserRole
+    services/         # RouteService (OSRM), NotificationService
+    utils/            # EmailUtils
+    widgets/          # Shared widgets
+  data/
+    repositories/     # AuthRepository
+  features/
+    auth/             # Role selection, registration, pending approval screens
+    chat/             # Shared ChatScreen used by both roles
+    conductor/
+      attendance/     # Trip management, OCR scanning, GPS-based stop tracking
+      home/           # Conductor home shell (IndexedStack + NavigationBar)
+      inbox/          # Broadcast and private chat list
+      profile/        # Edit profile, bus controls, manage passengers
+    passenger/
+      home/           # Passenger home shell
+      inbox/          # Broadcast and private chat list
+      profile/        # Edit profile, seat history, custom pins, notifications
+      seat_booking/   # Seat map and booking screen
+```
+
+---
+
+## Database Schema
+
+| Table | Purpose |
+|---|---|
+| passengers | Student and faculty accounts with approval status |
+| staff_credentials | Conductor accounts linked to Supabase auth |
+| buses | Bus configuration including seat counts and reserved rows |
+| routes | Named routes per city |
+| bus_stops | Stops with coordinates and stop order per route |
+| cities | Cities served by the network |
+| trips | Active and historical trip records with current stop index |
+| attendance | Per-passenger attendance state for each trip |
+| bus_locations | Live GPS position of each bus (one row per bus, upserted) |
+| seat_bookings | Daily seat reservations with booking date |
+| chat_rooms | Broadcast (one per bus) and direct (one per passenger per bus) rooms |
+| messages | Chat messages with sender name and type |
+| custom_pins | User-defined map pins with notification thresholds |
+
+Row-level security is enabled on all public tables.
+
+---
+
+## Getting Started
+
+**Prerequisites**
+
+- Flutter SDK 3.8.1 or later
+- A Supabase project with the schema applied
+- A Google Cloud Platform project with Maps SDK for Android and Maps SDK for iOS enabled
+- Google OAuth credentials configured for passenger sign-in
+- Android NDK 27.0.12077973
+- iOS deployment target 14.0 or later with CocoaPods installed
+
+---
+
+## Environment Setup
+
+Create `.env.json` at the project root (this file is gitignored):
+
+```json
+{
+  "SUPABASE_URL": "https://your-project.supabase.co",
+  "SUPABASE_ANON_KEY": "your-anon-key"
+}
+```
+
+Add your Google Maps API key in two places:
+
+**Android** -- `android/app/src/main/AndroidManifest.xml`:
+```xml
+<meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="YOUR_MAPS_API_KEY"/>
+```
+
+**iOS** -- `ios/Runner/AppDelegate.swift`:
+```swift
+GMSServices.provideAPIKey("YOUR_MAPS_API_KEY")
+```
+
+Configure Supabase:
+- Enable Email and Google OAuth providers in Authentication settings
+- Set Site URL to `com.vitbhopal.vbusf://login-callback`
+- Add `com.vitbhopal.vbusf://login-callback` to allowed redirect URLs
+- Schedule the seat booking cleanup job (requires pg_cron enabled):
+
+```sql
+select cron.schedule(
+  'cleanup-old-seat-bookings',
+  '30 14 * * *',
+  $$
+    delete from public.seat_bookings
+    where booking_date < current_date - interval '7 days';
+  $$
+);
+```
+
+---
+
+## Running the App
+
+Always include `--dart-define-from-file` so environment variables are compiled into the binary:
+
+```bash
+flutter run --dart-define-from-file=.env.json
+```
+
+For release builds:
+
+```bash
+flutter build apk --dart-define-from-file=.env.json
+flutter build ipa --dart-define-from-file=.env.json
+```
+
+Running without this flag will cause the app to crash immediately with an assertion error about an empty Supabase URL.
+
+---
+
+## Running Tests
+
+```bash
+flutter test
+```
+
+The test suite covers:
+
+- Email validation for student, faculty, and conductor formats
+- OCR registration number extraction and branch code patterns
+- Seat label calculation for different bus layouts
+- Booking window open, close, and lock logic including date rollover at 8 PM
+- Attendance state machine including scanning, stop advancement, trip end, and stats
+- Route structure and coordinate validity
+
+---
+
+## Known Limitations
+
+**Phone calls on simulator** -- The iOS Simulator has no Phone app, so the in-chat call button shows a "not supported" snackbar. It works correctly on physical devices.
+
+**Maps on simulator** -- Google Maps tiles may not render on the iOS Simulator. Everything functions correctly on physical devices and the Android emulator.
+
+**GPS attendance** -- Automatic stop advancement requires a real device GPS signal. On emulators with a mocked location the attendance screen will not advance stops automatically.
+
+**Background notifications** -- Custom pin arrival notifications fire when the app is in the foreground or background but not when it is terminated. Full background delivery would require Firebase Cloud Messaging.
+
+**Multiple buses** -- The configuration and coordinates in this repository cover bus 11 on the Vijay Market to VIT Campus route. Additional buses can be added by inserting rows into the buses, routes, and bus_stops tables with their respective stop coordinates.
