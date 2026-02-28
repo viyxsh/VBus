@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/app_config.dart';
+import '../../../../core/utils/error_messages.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../../../data/repositories/seat_repository.dart';
+import '../widgets/booking_history_sheet.dart';
 
 class PassengerSeatScreen extends ConsumerStatefulWidget {
   const PassengerSeatScreen({super.key});
@@ -39,6 +42,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   static const _closeHour = 19; // 7 PM — locks for current day
 
   _BookingState get _bookingState {
+    if (AppConfig.demoMode) return _BookingState.open; // always open for the demo
     final h = DateTime.now().hour;
     if (h >= _closeHour && h < _openHour) return _BookingState.locked;
     return _BookingState.open;
@@ -251,10 +255,21 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       if (mounted) await showErrorOverlay(context, 'Booking failed: ${e.message}');
     } catch (e) {
       debugPrint('[SEAT] confirm error: $e');
-      if (mounted) await showErrorOverlay(context, 'Something went wrong. Please try again.');
+      if (mounted) await showErrorOverlay(context, friendlyError(e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _showBookingHistory() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => const BookingHistorySheet(),
+    );
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────────
@@ -268,6 +283,13 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
         title: Text(_busNumber.isEmpty ? 'My Seat' : _busNumber),
         centerTitle: true,
         scrolledUnderElevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Booking history',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: _showBookingHistory,
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: LottieLoading())

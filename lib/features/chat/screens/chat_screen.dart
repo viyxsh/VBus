@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/services/message_notification_service.dart';
+import '../../../core/utils/error_messages.dart';
 import '../../../core/widgets/lottie_widgets.dart';
 import '../../../data/models/chat_message.dart';
 import '../../../data/repositories/chat_repository.dart';
@@ -66,8 +67,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             content: text,
           );
     } catch (e) {
-      _controller.text = text;
+      _controller.text = text; // restore so the user doesn't lose their message
       debugPrint('[CHAT] send error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(friendlyError(e, fallback: 'Message not sent. Try again.')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }

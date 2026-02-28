@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
 import '../models/chat_message.dart';
@@ -21,6 +22,12 @@ class ChatRepository {
   ChatRepository(this._users);
 
   final UserRepository _users;
+
+  // Live-prototype chat: in demo mode messages are held in memory per room and
+  // pushed to the open stream so they appear instantly, but nothing is written
+  // to the backend and everything resets when the page reloads.
+  static final Map<String, List<ChatMessage>> _demoMsgs = {};
+  static final Map<String, StreamController<List<ChatMessage>>> _demoCtrls = {};
 
   /// Most recent [limit] messages for a room, newest first.
   Future<List<ChatMessage>> recentMessages(
@@ -47,6 +54,18 @@ class ChatRepository {
     final controller = StreamController<List<ChatMessage>>();
     final messages = <ChatMessage>[];
     RealtimeChannel? channel;
+
+    if (AppConfig.demoMode) {
+      // No realtime; seed from the demo store and let sendMessage() push here.
+      final store = _demoMsgs[roomId] ??= [];
+      _demoCtrls[roomId] = controller;
+      controller.onListen = () => controller.add(List.unmodifiable(store));
+      controller.onCancel = () async {
+        if (_demoCtrls[roomId] == controller) _demoCtrls.remove(roomId);
+        await controller.close();
+      };
+      return controller.stream;
+    }
 
     Future<void> init() async {
       messages.addAll(await recentMessages(roomId, limit: limit));
@@ -86,6 +105,20 @@ class ChatRepository {
     required String senderName,
     required String content,
   }) async {
+    if (AppConfig.demoMode) {
+      // Echo into the in-memory store and push to the open stream; no DB write.
+      final msg = ChatMessage(
+        id: 'demo-${DateTime.now().microsecondsSinceEpoch}',
+        senderId: supabase.auth.currentUser!.id,
+        senderName: senderName,
+        content: content,
+        sentAt: DateTime.now(),
+      );
+      final store = _demoMsgs[roomId] ??= [];
+      store.insert(0, msg);
+      _demoCtrls[roomId]?.add(List.unmodifiable(store));
+      return;
+    }
     await supabase.from(SupabaseConstants.messages).insert({
       'chat_room_id': roomId,
       'sender_id': supabase.auth.currentUser!.id,
@@ -248,6 +281,7 @@ class ChatRepository {
   /// conductor and returns its ID.
   Future<String> createDirectRoomForCurrentPassenger(String busId) async {
     final userId = supabase.auth.currentUser!.id;
+    if (AppConfig.demoMode) return 'demo-direct-$userId';
     final room = await supabase
         .from(SupabaseConstants.chatRooms)
         .insert({
@@ -367,6 +401,7 @@ class ChatRepository {
   }
 
   Future<void> markRoomRead(String roomId) async {
+    if (AppConfig.demoMode) return; // live prototype: no read tracking
     final userId = supabase.auth.currentUser!.id;
     try {
       await supabase.from('chat_room_reads').upsert({
@@ -385,6 +420,7 @@ class ChatRepository {
     required String busId,
     required String passengerId,
   }) async {
+    if (AppConfig.demoMode) return 'demo-direct-$passengerId';
     final existing = await supabase
         .from(SupabaseConstants.chatRooms)
         .select('id')

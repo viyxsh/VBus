@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
 
@@ -107,6 +108,7 @@ class TrackingRepository {
     required double heading,
     required double speedKmh,
   }) async {
+    if (AppConfig.demoMode) return; // the seeded cron job drives the location
     await supabase.from(SupabaseConstants.busLocations).upsert({
       'bus_id': busId,
       'trip_id': tripId,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -251,6 +252,21 @@ class _ConductorLoginSectionState
     }
   }
 
+  Future<void> _signInDemo() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _loading = true);
+    try {
+      await ref.read(authRepositoryProvider).signInDemoConductor();
+    } on AuthException catch (e) {
+      _showError(e.message);
+    } catch (e) {
+      debugPrint('[CONDUCTOR] demo error: $e');
+      _showError('Demo sign-in failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -266,65 +282,89 @@ class _ConductorLoginSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _usernameController,
-          textInputAction: TextInputAction.next,
-          autocorrect: false,
-          decoration: InputDecoration(
-            labelText: 'Username',
-
-            prefixIcon: const Icon(Icons.person_outline),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _passwordController,
-          obscureText: _obscurePassword,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _login(),
-          decoration: InputDecoration(
-            labelText: 'Password',
-            prefixIcon: const Icon(Icons.lock_outline),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
+        // Web demo: the only way in is the one-tap dummy sign-in.
+        if (kIsWeb)
+          FilledButton(
+            onPressed: _loading ? null : _signInDemo,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              onPressed: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Enter Demo (Conductor)',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          ),
+        // Native apps: real username/password sign-in.
+        if (!kIsWeb) ...[
+          TextField(
+            controller: _usernameController,
+            textInputAction: TextInputAction.next,
+            autocorrect: false,
+            decoration: InputDecoration(
+              labelText: 'Username',
+              prefixIcon: const Icon(Icons.person_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 24),
-        FilledButton(
-          onPressed: _loading ? null : _login,
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: _loading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text(
-                  'Sign In',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _login(),
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: const Icon(Icons.lock_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                 ),
-        ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _loading ? null : _login,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Sign In',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+          ),
+        ],
       ],
     );
   }
@@ -361,6 +401,21 @@ class _PassengerLoginSectionState
     }
   }
 
+  Future<void> _signInDemo() async {
+    setState(() => _loading = true);
+    try {
+      await ref.read(authRepositoryProvider).signInDemoStudent();
+      // authStateProvider fires → router redirects automatically
+    } on AuthException catch (e) {
+      _showError(e.message);
+    } catch (e) {
+      debugPrint('Demo sign-in error: $e');
+      _showError('Demo sign-in failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -374,6 +429,43 @@ class _PassengerLoginSectionState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Web demo: no Google OAuth — one-tap dummy sign-in instead.
+    if (kIsWeb) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton(
+            onPressed: _loading ? null : _signInDemo,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text(
+                    'Enter Demo (Student)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Demo mode — explore the app with sample data',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

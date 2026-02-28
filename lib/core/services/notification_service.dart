@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -9,6 +10,7 @@ class NotificationService {
   static const _channelName = 'Bus Proximity Alerts';
 
   static Future<void> init() async {
+    if (kIsWeb) return; // local notifications aren't supported on web
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -34,6 +36,7 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
+    if (kIsWeb) return; // local notifications aren't supported on web
     const androidDetails = AndroidNotificationDetails(
       _channelId,
       _channelName,

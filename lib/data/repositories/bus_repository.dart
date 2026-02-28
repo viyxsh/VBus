@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
 
@@ -37,6 +38,7 @@ class BusRepository {
 
   /// Removes a passenger from a bus by marking them rejected.
   Future<void> rejectPassenger(String passengerId) async {
+    if (AppConfig.demoMode) return;
     await supabase
         .from(SupabaseConstants.passengers)
         .update({'approval_status': 'rejected'})
@@ -64,6 +66,7 @@ class BusRepository {
     required String displayName,
     required String phone,
   }) async {
+    if (AppConfig.demoMode) return;
     final userId = supabase.auth.currentUser!.id;
     await supabase.from(SupabaseConstants.staffCredentials).update({
       'display_name': displayName,
@@ -76,6 +79,7 @@ class BusRepository {
     required int reservedRowsLeft,
     required int reservedRowsRight,
   }) async {
+    if (AppConfig.demoMode) return;
     await supabase.from(SupabaseConstants.buses).update({
       'faculty_reserved_rows_left': reservedRowsLeft,
       'faculty_reserved_rows_right': reservedRowsRight,

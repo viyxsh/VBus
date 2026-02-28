@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
 
@@ -43,8 +44,17 @@ class AttendanceRepository {
     return ended == null ? null : Map<String, dynamic>.from(ended);
   }
 
+  // Demo roster names, shown on the conductor attendance page in demo mode.
+  static const _demoNames = [
+    'Aarav Sharma', 'Diya Patel', 'Kabir Reddy', 'Ananya Verma',
+    'Rohan Mehta', 'Isha Kulkarni', 'Vihaan Tiwari', 'Sara Nair',
+    'Arjun Desai', 'Myra Joshi', 'Aditya Rao', 'Tara Menon',
+    'Krishna Iyer', 'Riya Gupta', 'Dev Malhotra', 'Anvi Shah',
+  ];
+
   /// All attendance rows for a trip, joined with passenger and stop info.
   Future<List<Map<String, dynamic>>> attendanceForTrip(String tripId) async {
+    if (AppConfig.demoMode) return _demoAttendance(tripId);
     final data = await supabase
         .from(SupabaseConstants.attendance)
         .select(
@@ -55,11 +65,72 @@ class AttendanceRepository {
     return List<Map<String, dynamic>>.from(data as List);
   }
 
+  /// Builds a believable attendance roster for the demo: students spread across
+  /// the route's stops, with states derived from where the bus currently is
+  /// (passed stops → present/missing, current & upcoming → waiting).
+  Future<List<Map<String, dynamic>>> _demoAttendance(String tripId) async {
+    final trip = await supabase
+        .from(SupabaseConstants.trips)
+        .select('bus_id, current_stop_index')
+        .eq('id', tripId)
+        .single();
+    final busId = trip['bus_id'] as String;
+    final currentIdx = (trip['current_stop_index'] as num?)?.toInt() ?? 0;
+
+    final bus = await supabase
+        .from(SupabaseConstants.buses)
+        .select('route_id')
+        .eq('id', busId)
+        .single();
+
+    final stops = List<Map<String, dynamic>>.from(await supabase
+        .from(SupabaseConstants.busStops)
+        .select('id, name, stop_order')
+        .eq('route_id', bus['route_id'] as String)
+        .order('stop_order') as List);
+    if (stops.isEmpty) return [];
+
+    final result = <Map<String, dynamic>>[];
+    for (int j = 0; j < _demoNames.length; j++) {
+      final stopIdx = j % stops.length;
+      final stop = stops[stopIdx];
+
+      final String state;
+      if (stopIdx < currentIdx) {
+        state = (j % 4 == 0) ? 'missing' : 'present'; // passed stops
+      } else if (stopIdx == currentIdx) {
+        state = (j % 2 == 0) ? 'present' : 'waiting'; // boarding now
+      } else {
+        state = 'waiting'; // upcoming stops
+      }
+
+      result.add({
+        'id': 'demo-att-$j',
+        'passenger_id': 'demo-passenger-$j',
+        'stop_id': stop['id'],
+        'state': state,
+        'scanned_at': null,
+        'passengers': {'name': _demoNames[j]},
+        'bus_stops': {
+          'name': stop['name'],
+          'stop_order': stop['stop_order'],
+        },
+      });
+    }
+    return result;
+  }
+
   /// Starts a new ongoing trip and returns the created row.
   Future<Map<String, dynamic>> startTrip({
     required String busId,
     required String conductorId,
   }) async {
+    if (AppConfig.demoMode) {
+      // Reuse the seeded live trip instead of creating one.
+      final existing =
+          await currentOrLastTrip(busId: busId, conductorId: conductorId);
+      if (existing != null) return existing;
+    }
     final today = DateTime.now().toIso8601String().substring(0, 10);
     final trip = await supabase
         .from(SupabaseConstants.trips)
@@ -92,6 +163,7 @@ class AttendanceRepository {
     String tripId,
     List<Map<String, dynamic>> roster,
   ) async {
+    if (AppConfig.demoMode) return; // live prototype: no roster writes
     if (roster.isEmpty) return;
     await supabase.from(SupabaseConstants.attendance).insert(
           roster
@@ -107,6 +179,7 @@ class AttendanceRepository {
 
   /// Marks waiting passengers at a passed stop as missing.
   Future<void> markStopWaitingMissing(String tripId, String stopId) async {
+    if (AppConfig.demoMode) return;
     await supabase
         .from(SupabaseConstants.attendance)
         .update({'state': 'missing'})
@@ -116,6 +189,7 @@ class AttendanceRepository {
   }
 
   Future<void> updateCurrentStopIndex(String tripId, int index) async {
+    if (AppConfig.demoMode) return; // the seeded cron job drives the index
     await supabase
         .from(SupabaseConstants.trips)
         .update({'current_stop_index': index})
@@ -124,6 +198,7 @@ class AttendanceRepository {
 
   /// Ends a trip: marks remaining waiting passengers absent, then closes it.
   Future<void> endTrip(String tripId) async {
+    if (AppConfig.demoMode) return; // never end the seeded live demo trip
     await supabase
         .from(SupabaseConstants.attendance)
         .update({'state': 'absent'})
@@ -149,6 +224,7 @@ class AttendanceRepository {
   }
 
   Future<void> markPresent(String attendanceId) async {
+    if (AppConfig.demoMode) return; // live prototype: simulate the scan only
     await supabase.from(SupabaseConstants.attendance).update({
       'state': 'present',
       'scanned_at': DateTime.now().toIso8601String(),
