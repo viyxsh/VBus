@@ -17,6 +17,7 @@ A Flutter application for managing and tracking university bus transport at VIT 
 - [Getting Started](#getting-started)
 - [Environment Setup](#environment-setup)
 - [Running the App](#running-the-app)
+- [Web Demo (Live Prototype)](#web-demo-live-prototype)
 - [Running Tests](#running-tests)
 - [Known Limitations](#known-limitations)
 
@@ -249,6 +250,47 @@ flutter build ipa --dart-define-from-file=.env.json
 ```
 
 Running without this flag will cause the app to crash immediately with an assertion error about an empty Supabase URL.
+
+---
+
+## Web Demo (Live Prototype)
+
+A browser build is published so the app can be shown without installing anything:
+
+**Live link:** https://viyxsh.github.io/VBus/
+
+The web build is a **read-only live prototype**. It runs against the real Supabase project but never writes to it — seat bookings, chat messages, custom pins, profile edits, and all conductor trip/attendance actions return a simulated success. This lets a public link be shared safely: visitors can explore every screen without altering real data or affecting one another, and any change a visitor makes resets when the page is reloaded.
+
+### How demo mode works
+
+`AppConfig.demoMode` defaults to **on for web** and **off for mobile** (override with `--dart-define=DEMO_MODE=true|false`). When on:
+
+- Every repository write is intercepted and simulated; nothing reaches the backend.
+- Chat messages and custom pins are held in memory for the session so they appear instantly, then clear on reload.
+- The seat screen shows pre-filled "taken" seats and the booking window is always open.
+- The conductor attendance page shows a generated roster whose states track the live trip's position.
+- Map/GPS, notifications, and ML Kit OCR (none of which run on web) are guarded behind `kIsWeb`.
+
+### Demo accounts and seed data
+
+On web the role-selection screen offers one-tap **Enter Demo (Student)** and **Enter Demo (Conductor)** sign-ins (the manual conductor form is hidden). These require:
+
+1. Two Supabase Auth users created in the Dashboard:
+   - Student: a student-pattern email, e.g. `demo.23bce10001@vitbhopal.ac.in`
+   - Conductor: `conductor_demo@vbus.internal`
+2. The SQL scripts in [`supabase/`](supabase/) run once in the Dashboard SQL Editor, in order:
+   - `demo_account.sql` — creates the demo student passenger row and assigns a bus
+   - `demo_conductor.sql` — points that bus's conductor at the demo Auth user
+   - `demo_seed.sql` — starts a self-moving trip via `pg_cron` so the map, timeline, and ETA animate on their own
+3. `.env.json` filled with `DEMO_STUDENT_EMAIL` / `DEMO_STUDENT_PASSWORD` and `DEMO_CONDUCTOR_USERNAME` / `DEMO_CONDUCTOR_PASSWORD` matching the Auth users (baked in at build time).
+
+### Building and deploying the web bundle
+
+```bash
+flutter build web --release --dart-define-from-file=.env.json --base-href /VBus/
+```
+
+The build output in `build/web` is published to the `gh-pages` branch, which GitHub Pages serves. Use `--base-href /VBus/` so asset paths resolve under the project-pages path.
 
 ---
 
