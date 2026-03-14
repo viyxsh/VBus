@@ -2,6 +2,10 @@
 
 A Flutter application for managing and tracking university bus transport at VIT Bhopal. The system serves two user roles - passengers (students and faculty) and conductors - with a shared Supabase backend.
 
+### 🔗 Live Demo: **https://viyxsh.github.io/VBus/**
+
+A read-only browser build — tap **Enter Demo (Student)** or **Enter Demo (Conductor)** to explore every screen. Nothing you do is saved to the backend; it all resets on reload. See [Web Demo (Live Prototype)](#web-demo-live-prototype) for details.
+
 ---
 
 ## Table of Contents
