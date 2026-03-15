@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_config.dart';
+import '../../../../core/constants/supabase_constants.dart';
 import '../../../../core/utils/error_messages.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../../../data/repositories/seat_repository.dart';
+import '../../../../main.dart';
 import '../widgets/booking_history_sheet.dart';
 
 class PassengerSeatScreen extends ConsumerStatefulWidget {
@@ -35,6 +37,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
   bool _loading = true;
   bool _submitting = false;
+
+  RealtimeChannel? _busConfigChannel;
 
   // ─── Booking window ────────────────────────────────────────────────────────
 
@@ -80,6 +84,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _busConfigChannel?.unsubscribe();
+    super.dispose();
+  }
+
   // ─── Data loading ──────────────────────────────────────────────────────────
 
   Future<void> _load() async {
@@ -96,11 +106,83 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       _facultyRowsLeft = (bus['faculty_reserved_rows_left']  as num).toInt();
       _facultyRowsRight= (bus['faculty_reserved_rows_right'] as num).toInt();
 
+      debugPrint('[PASS_SEAT] Initial load: busId=$_busId '
+          'facultyRowsLeft=$_facultyRowsLeft facultyRowsRight=$_facultyRowsRight');
+
       await _loadBookings(ref.read(seatRepositoryProvider).currentUserId);
+      _subscribeBusConfig();
     } catch (e) {
-      debugPrint('[SEAT] load error: $e');
+      debugPrint('[PASS_SEAT] load error: $e');
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _subscribeBusConfig() {
+    _busConfigChannel?.unsubscribe();
+    _busConfigChannel = supabase
+        .channel('bus_config_$_busId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: SupabaseConstants.buses,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: _busId,
+          ),
+          callback: (payload) => _onBusConfigChanged(payload.newRecord),
+        )
+        .subscribe();
+  }
+
+  Future<void> _onBusConfigChanged(Map<String, dynamic> newData) async {
+    if (!mounted) return;
+
+    final newLeft = (newData['faculty_reserved_rows_left'] as num?)?.toInt();
+    final newRight = (newData['faculty_reserved_rows_right'] as num?)?.toInt();
+    debugPrint('[PASS_SEAT] Realtime bus config changed: '
+        'newLeft=$newLeft newRight=$newRight '
+        'currentLeft=$_facultyRowsLeft currentRight=$_facultyRowsRight');
+    if (newLeft == null || newRight == null) return;
+    if (newLeft == _facultyRowsLeft && newRight == _facultyRowsRight) return;
+
+    _facultyRowsLeft = newLeft;
+    _facultyRowsRight = newRight;
+
+    final seatRepo = ref.read(seatRepositoryProvider);
+    final userId = seatRepo.currentUserId;
+
+    // Rebuild seat list with the new faculty-row layout
+    final seats = _buildSeats();
+
+    // If the user's confirmed seat was reclassified to a type they can't book,
+    // auto-clear the orphaned booking and notify them.
+    if (_confirmedSeat != null) {
+      final idx = seats.indexWhere((s) => s.number == _confirmedSeat);
+      if (idx != -1) {
+        final seat = seats[idx];
+        final orphaned =
+            (_userType == 'student' && seat.type == _SeatType.faculty) ||
+            (_userType == 'faculty' && seat.type == _SeatType.student);
+
+        if (orphaned) {
+          try {
+            await seatRepo.clearMyBooking(_bookingDateStr);
+          } catch (_) {}
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(_userType == 'student'
+                  ? 'Your seat is now reserved for faculty. Please choose a student seat.'
+                  : 'Your seat is now a student seat. Please choose a faculty seat.'),
+              backgroundColor: Colors.orange.shade700,
+            ));
+          }
+        }
+      }
+    }
+
+    // Reload bookings so taken-seat markers reflect the DB state.
+    await _loadBookings(userId);
   }
 
   Future<void> _loadBookings(String userId) async {

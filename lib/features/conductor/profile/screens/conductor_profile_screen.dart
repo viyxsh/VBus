@@ -79,14 +79,14 @@ class _ConductorProfileScreenState
     );
   }
 
-  void _showBusControls(Map<String, dynamic> profile) {
+  void _showBusControls() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _BusControlsSheet(profile: profile),
+      builder: (_) => const _BusControlsSheet(),
     );
   }
 
@@ -187,7 +187,7 @@ class _ConductorProfileScreenState
               _card([
                 _row('assets/icons/bus.svg', S.t(context, 'Bus Controls'),
                     subtitle: S.t(context, 'Faculty rows, seat layout'),
-                    onTap: () => _showBusControls(profile), theme: theme),
+                    onTap: _showBusControls, theme: theme),
                 _divider(theme),
                 _row('assets/icons/passengers.svg', S.t(context, 'Manage Passengers'),
                     subtitle: S.t(context, 'Add or remove passengers from bus'),
@@ -432,46 +432,65 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
 // ─── Bus Controls Sheet ───────────────────────────────────────────────────────
 
 class _BusControlsSheet extends ConsumerStatefulWidget {
-  final Map<String, dynamic> profile;
-  const _BusControlsSheet({required this.profile});
+  const _BusControlsSheet();
 
   @override
   ConsumerState<_BusControlsSheet> createState() => _BusControlsSheetState();
 }
 
 class _BusControlsSheetState extends ConsumerState<_BusControlsSheet> {
-  late int _rowsLeft;
-  late int _rowsRight;
-  late int _totalLeftRows;
-  late int _totalRightRows;
+  int _rowsLeft = 0;
+  int _rowsRight = 0;
+  int _totalLeftRows = 0;
+  int _totalRightRows = 0;
+  late String _busId;
   bool _saving = false;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    final bus = widget.profile['buses'] as Map;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromProvider());
+  }
+
+  Future<void> _loadFromProvider() async {
+    final profile = await ref.read(conductorProfileProvider.future);
+    if (!mounted) return;
+    final bus = profile['buses'] as Map;
+    _busId = profile['bus_id'] as String;
     final leftSeats = (bus['left_seats'] as num).toInt();
     final studentSeats = (bus['student_seats'] as num).toInt();
     final backCount = studentSeats >= 6 ? 6 : studentSeats;
     final rightCount = studentSeats - backCount;
 
-    _totalLeftRows = (leftSeats / 2).ceil();
-    _totalRightRows = (rightCount / 3).ceil();
-    _rowsLeft = (bus['faculty_reserved_rows_left'] as num).toInt();
-    _rowsRight = (bus['faculty_reserved_rows_right'] as num).toInt();
+    debugPrint('[BUS_CTRL] Loaded from provider: busId=$_busId leftSeats=$leftSeats '
+        'studentSeats=$studentSeats '
+        'facultyRowsLeft=${bus['faculty_reserved_rows_left']} '
+        'facultyRowsRight=${bus['faculty_reserved_rows_right']}');
+
+    setState(() {
+      _totalLeftRows = (leftSeats / 2).ceil();
+      _totalRightRows = (rightCount / 3).ceil();
+      _rowsLeft = (bus['faculty_reserved_rows_left'] as num).toInt();
+      _rowsRight = (bus['faculty_reserved_rows_right'] as num).toInt();
+      _loading = false;
+    });
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    debugPrint('[BUS_CTRL] SAVING: busId=$_busId rowsLeft=$_rowsLeft rowsRight=$_rowsRight');
     try {
       await ref.read(busRepositoryProvider).updateFacultyRows(
-            busId: widget.profile['bus_id'] as String,
+            busId: _busId,
             reservedRowsLeft: _rowsLeft,
             reservedRowsRight: _rowsRight,
           );
+      debugPrint('[BUS_CTRL] Save SUCCESS, invalidating provider');
       ref.invalidate(conductorProfileProvider);
       if (mounted) Navigator.pop(context);
     } catch (e) {
+      debugPrint('[BUS_CTRL] Save FAILED: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Failed: $e'),
@@ -501,30 +520,37 @@ class _BusControlsSheetState extends ConsumerState<_BusControlsSheet> {
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
-          _rowStepper(theme, 'Left side reserved rows',
-              'Faculty rows on left column', _rowsLeft, _totalLeftRows,
-              (v) => setState(() => _rowsLeft = v)),
-          const SizedBox(height: 16),
-          _rowStepper(theme, 'Right side reserved rows',
-              'Faculty rows on right column', _rowsRight, _totalRightRows,
-              (v) => setState(() => _rowsRight = v)),
-          const SizedBox(height: 28),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else ...[
+            _rowStepper(theme, 'Left side reserved rows',
+                'Faculty rows on left column', _rowsLeft, _totalLeftRows,
+                (v) => setState(() => _rowsLeft = v)),
+            const SizedBox(height: 16),
+            _rowStepper(theme, 'Right side reserved rows',
+                'Faculty rows on right column', _rowsRight, _totalRightRows,
+                (v) => setState(() => _rowsRight = v)),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Save',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
             ),
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Text('Save',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
+          ],
         ],
       ),
     );

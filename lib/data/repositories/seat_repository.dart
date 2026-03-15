@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -39,21 +40,12 @@ class SeatRepository {
         )
         .eq('id', userId)
         .single();
-    final map = Map<String, dynamic>.from(profile);
-
-    // In the demo, guarantee at least one faculty row each side so the layout
-    // shows both yellow (faculty) and red (student) seats.
-    if (AppConfig.demoMode) {
-      final bus = Map<String, dynamic>.from(map['buses'] as Map);
-      if (((bus['faculty_reserved_rows_left'] as num?) ?? 0) == 0) {
-        bus['faculty_reserved_rows_left'] = 1;
-      }
-      if (((bus['faculty_reserved_rows_right'] as num?) ?? 0) == 0) {
-        bus['faculty_reserved_rows_right'] = 1;
-      }
-      map['buses'] = bus;
-    }
-    return map;
+    final bus = profile['buses'] as Map;
+    debugPrint('[SEAT_REPO] seatBusInfo: '
+        'bus_id=${profile['bus_id']} '
+        'facultyRowsLeft=${bus['faculty_reserved_rows_left']} '
+        'facultyRowsRight=${bus['faculty_reserved_rows_right']}');
+    return Map<String, dynamic>.from(profile);
   }
 
   /// All seat bookings on a bus for a given date, with booker names.

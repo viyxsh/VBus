@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/constants/app_config.dart';
@@ -59,6 +63,11 @@ class BusRepository {
         )
         .eq('auth_user_id', userId)
         .single();
+    final bus = data['buses'] as Map;
+    debugPrint('[BUS_REPO] conductorProfile loaded: '
+        'bus_id=${data['bus_id']} '
+        'facultyRowsLeft=${bus['faculty_reserved_rows_left']} '
+        'facultyRowsRight=${bus['faculty_reserved_rows_right']}');
     return Map<String, dynamic>.from(data);
   }
 
@@ -79,10 +88,32 @@ class BusRepository {
     required int reservedRowsLeft,
     required int reservedRowsRight,
   }) async {
-    if (AppConfig.demoMode) return;
-    await supabase.from(SupabaseConstants.buses).update({
-      'faculty_reserved_rows_left': reservedRowsLeft,
-      'faculty_reserved_rows_right': reservedRowsRight,
-    }).eq('id', busId);
+    debugPrint('[BUS_REPO] updateFacultyRows called: '
+        'busId=$busId reservedRowsLeft=$reservedRowsLeft reservedRowsRight=$reservedRowsRight '
+        'demoMode=${AppConfig.demoMode}');
+
+    // Use RPC (SECURITY DEFINER) to bypass RLS on the buses table.
+    // Requires: CREATE FUNCTION update_faculty_rows in Supabase SQL Editor.
+    try {
+      final result = await supabase.rpc('update_faculty_rows', params: {
+        'p_bus_id': busId,
+        'p_rows_left': reservedRowsLeft,
+        'p_rows_right': reservedRowsRight,
+      });
+      debugPrint('[BUS_REPO] RPC result=$result');
+
+      // Verify read-back
+      final verify = await supabase
+          .from(SupabaseConstants.buses)
+          .select('id, faculty_reserved_rows_left, faculty_reserved_rows_right')
+          .eq('id', busId)
+          .single();
+      debugPrint('[BUS_REPO] VERIFY after update: id=${verify['id']} '
+          'facultyRowsLeft=${verify['faculty_reserved_rows_left']} '
+          'facultyRowsRight=${verify['faculty_reserved_rows_right']}');
+    } catch (e) {
+      debugPrint('[BUS_REPO] updateFacultyRows EXCEPTION: $e');
+      rethrow;
+    }
   }
 }
