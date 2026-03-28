@@ -1,3 +1,5 @@
+import 'dart:io' show SocketException;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -242,11 +244,11 @@ class _ConductorLoginSectionState
           );
       // Router auto-redirects via authStateProvider
     } on AuthException catch (e) {
-      debugPrint('[CONDUCTOR] AuthException: ${e.message}');
-      _showError(e.message);
+      debugPrint('[CONDUCTOR] sign-in AuthException: ${e.message}');
+      _showError(_friendlyError(e));
     } catch (e, st) {
-      debugPrint('[CONDUCTOR] error: $e\n$st');
-      _showError('Invalid username or password');
+      debugPrint('[CONDUCTOR] sign-in error: $e\n$st');
+      _showError(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -258,10 +260,11 @@ class _ConductorLoginSectionState
     try {
       await ref.read(authRepositoryProvider).signInDemoConductor();
     } on AuthException catch (e) {
-      _showError(e.message);
-    } catch (e) {
-      debugPrint('[CONDUCTOR] demo error: $e');
-      _showError('Demo sign-in failed. Please try again.');
+      debugPrint('[CONDUCTOR] demo AuthException: ${e.message}');
+      _showError(_friendlyError(e));
+    } catch (e, st) {
+      debugPrint('[CONDUCTOR] demo error: $e\n$st');
+      _showError(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -391,11 +394,11 @@ class _PassengerLoginSectionState
       // On mobile: browser opens, user signs in, deep link returns to app
       // authStateProvider fires → router redirects automatically
     } on AuthException catch (e) {
-      debugPrint('Google sign-in AuthException: ${e.message}');
-      _showError(e.message);
+      debugPrint('[PASSENGER] Google sign-in AuthException: ${e.message}');
+      _showError(_friendlyError(e));
     } catch (e, st) {
-      debugPrint('Google sign-in error: $e\n$st');
-      _showError('Google sign-in failed. Please try again.');
+      debugPrint('[PASSENGER] Google sign-in error: $e\n$st');
+      _showError(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -407,10 +410,11 @@ class _PassengerLoginSectionState
       await ref.read(authRepositoryProvider).signInDemoStudent();
       // authStateProvider fires → router redirects automatically
     } on AuthException catch (e) {
-      _showError(e.message);
-    } catch (e) {
-      debugPrint('Demo sign-in error: $e');
-      _showError('Demo sign-in failed. Please try again.');
+      debugPrint('[PASSENGER] demo AuthException: ${e.message}');
+      _showError(_friendlyError(e));
+    } catch (e, st) {
+      debugPrint('[PASSENGER] demo error: $e\n$st');
+      _showError(_friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -517,4 +521,27 @@ class _PassengerLoginSectionState
       ],
     );
   }
+}
+
+/// Maps auth/network exceptions to user-friendly messages.
+String _friendlyError(Object error) {
+  if (error is AuthException) {
+    final msg = error.message;
+    if (msg.contains('Invalid login credentials')) {
+      return 'Invalid username or password.';
+    }
+    if (msg.contains('SocketException') ||
+        msg.contains('Failed host lookup') ||
+        msg.contains('errno')) {
+      return 'Unable to connect. Please check your internet connection and try again.';
+    }
+    if (msg.length < 120 && !msg.contains('\n')) {
+      return msg;
+    }
+    return 'Sign-in failed. Please try again.';
+  }
+  if (error is SocketException) {
+    return 'Unable to connect. Please check your internet connection and try again.';
+  }
+  return 'Something went wrong. Please try again.';
 }

@@ -147,7 +147,7 @@ class _PassengerRegistrationScreenState
       _showError('Please complete all bus assignment fields.');
       return;
     }
-    if (_receiptFile == null && !_devBypass) {
+    if (_userType == 'student' && _receiptFile == null && !_devBypass) {
       _showError('Please upload your fee receipt.');
       return;
     }
@@ -174,7 +174,7 @@ class _PassengerRegistrationScreenState
         busId: _selectedBus!['id'] as String,
         stopId: _selectedStop!['id'] as String,
         receiptPath: receiptPath,
-        approved: kDebugMode && _devBypass,
+        approved: _userType == 'faculty' || (kDebugMode && _devBypass),
       );
     } on PostgrestException catch (e) {
       // 23505 = unique violation; most likely institute_id taken by another user
@@ -244,13 +244,15 @@ class _PassengerRegistrationScreenState
                           _buildBusDropdown(theme),
                           const SizedBox(height: 16),
                           _buildStopDropdown(theme),
-                          const SizedBox(height: 28),
-                          _sectionHeader(theme, 'Fee Receipt'),
-                          const SizedBox(height: 16),
-                          _buildReceiptPicker(theme),
-                          if (kDebugMode) ...[
-                            const SizedBox(height: 24),
-                            _buildDevBypass(theme),
+                          if (_userType == 'student') ...[
+                            const SizedBox(height: 28),
+                            _sectionHeader(theme, 'Fee Receipt'),
+                            const SizedBox(height: 16),
+                            _buildReceiptPicker(theme),
+                            if (kDebugMode) ...[
+                              const SizedBox(height: 24),
+                              _buildDevBypass(theme),
+                            ],
                           ],
                         ],
                       ),

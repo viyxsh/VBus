@@ -46,6 +46,7 @@ class _ConductorAttendanceScreenState
   DateTime? _lastGpsTime;   // for GPS-loss detection
   Timer? _gpsWatchdog;
   bool _gpsLost = false;
+  bool _offRoute = false;
 
   @override
   void initState() {
@@ -188,11 +189,11 @@ class _ConductorAttendanceScreenState
 
     _lastGpsTime = DateTime.now();
 
-    // Watchdog: flag GPS as lost if no update for 30 seconds
+    // Watchdog: flag GPS as lost if no update for 10 seconds
     _gpsWatchdog = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
       final elapsed = DateTime.now().difference(_lastGpsTime!);
-      final lost = elapsed.inSeconds > 30;
+      final lost = elapsed.inSeconds > 10;
       if (lost != _gpsLost) setState(() => _gpsLost = lost);
     });
 
@@ -210,6 +211,11 @@ class _ConductorAttendanceScreenState
     if (_gpsLost && mounted) setState(() => _gpsLost = false);
 
     if (_trip == null || _stops.isEmpty) return;
+
+    // Check if bus is off the designated route
+    final offRoute = _isOffRoute(pos.latitude, pos.longitude);
+    if (offRoute != _offRoute && mounted) setState(() => _offRoute = offRoute);
+    if (offRoute) return; // don't auto-advance while off-route
 
     // Find nearest stop with valid coordinates
     int nearestIdx = -1;
@@ -238,6 +244,51 @@ class _ConductorAttendanceScreenState
     if (!atStop && !moving) return;
 
     _advanceTo(nearestIdx);
+  }
+
+  /// Whether the bus is farther than 200 m from every stop and from every
+  /// straight segment between consecutive stops (i.e. off the route corridor).
+  bool _isOffRoute(double lat, double lng) {
+    const thresholdKm = 0.2;
+
+    // 1. Check distance to each stop
+    for (final stop in _stops) {
+      final slat = (stop['latitude']  as num?)?.toDouble() ?? 0;
+      final slng = (stop['longitude'] as num?)?.toDouble() ?? 0;
+      if (slat == 0 && slng == 0) continue;
+      if (_haversineKm(lat, lng, slat, slng) < thresholdKm) return false;
+    }
+
+    // 2. Check distance to each segment between consecutive stops
+    for (int i = 0; i < _stops.length - 1; i++) {
+      final aLat = (_stops[i]['latitude']     as num?)?.toDouble() ?? 0;
+      final aLng = (_stops[i]['longitude']    as num?)?.toDouble() ?? 0;
+      final bLat = (_stops[i + 1]['latitude']   as num?)?.toDouble() ?? 0;
+      final bLng = (_stops[i + 1]['longitude']  as num?)?.toDouble() ?? 0;
+      if (aLat == 0 && aLng == 0) continue;
+      if (bLat == 0 && bLng == 0) continue;
+      if (_pointToSegmentKm(lat, lng, aLat, aLng, bLat, bLng) < thresholdKm) {
+        return false;
+      }
+    }
+
+    return true; // nowhere near the route corridor
+  }
+
+  /// Perpendicular distance (km) from point P to the segment AB.
+  double _pointToSegmentKm(
+      double px, double py,
+      double ax, double ay,
+      double bx, double by) {
+    final abx = bx - ax;
+    final aby = by - ay;
+    final dot = abx * abx + aby * aby;
+    if (dot == 0) return _haversineKm(px, py, ax, ay); // A == B
+    var t = ((px - ax) * abx + (py - ay) * aby) / dot;
+    t = t.clamp(0.0, 1.0);
+    final cx = ax + t * abx;
+    final cy = ay + t * aby;
+    return _haversineKm(px, py, cx, cy);
   }
 
   Future<void> _advanceTo(int newIdx) async {
@@ -646,6 +697,67 @@ class _ConductorAttendanceScreenState
     );
   }
 
+  /// Shared amber warning banner used for GPS-lost and off-route states.
+  Widget _buildWarningBanner({
+    required IconData icon,
+    required String message,
+    required bool showNextStop,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade800
+            .withValues(alpha: isDark ? 0.18 : 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: Colors.amber.shade700.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon,
+              size: 18,
+              color: isDark
+                  ? Colors.amber.shade300
+                  : Colors.amber.shade800),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: isDark
+                    ? Colors.amber.shade200
+                    : Colors.amber.shade900,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          if (showNextStop) ...[
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: _processing ? null : _manualNextStop,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.amber.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              child: Text(S.t(context, 'Next Stop →')),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _summaryPill(String count, String label, Color textColor, Color bgColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -673,6 +785,11 @@ class _ConductorAttendanceScreenState
     final showNextStop = _trip!['state'] == 'ongoing' &&
         (_trip!['current_stop_index'] as num).toInt() < _stops.length - 1;
     final s = _stats();
+    final locColor = _gpsLost
+        ? Colors.amber.shade700
+        : _offRoute
+            ? Colors.red.shade600
+            : theme.colorScheme.primary;
 
     final filtered = _attendances.where((a) {
       final matchesState = _filterState == null || a.state == _filterState;
@@ -683,59 +800,18 @@ class _ConductorAttendanceScreenState
 
     return Column(
       children: [
-        // ── GPS lost banner ────────────────────────────────────────────────
+        // ── Warning banners ────────────────────────────────────────────────
         if (_gpsLost)
-          Container(
-            margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade800
-                  .withValues(alpha: isDark ? 0.18 : 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: Colors.amber.shade700.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.gps_off_rounded,
-                    size: 18,
-                    color: isDark
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade800),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    S.t(context, 'GPS lost — auto-advance paused.'),
-                    style: TextStyle(
-                      color: isDark
-                          ? Colors.amber.shade200
-                          : Colors.amber.shade900,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (showNextStop) ...[
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _processing ? null : _manualNextStop,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.amber.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      textStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                    child: Text(S.t(context, 'Next Stop →')),
-                  ),
-                ],
-              ],
-            ),
+          _buildWarningBanner(
+            icon: Icons.gps_off_rounded,
+            message: S.t(context, 'GPS lost — auto-advance paused.'),
+            showNextStop: showNextStop,
+          ),
+        if (_offRoute && !_gpsLost)
+          _buildWarningBanner(
+            icon: Icons.map_outlined,
+            message: S.t(context, 'Bus is off the designated route.'),
+            showNextStop: showNextStop,
           ),
 
         // ── Current location card ──────────────────────────────────────────
@@ -765,20 +841,17 @@ class _ConductorAttendanceScreenState
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: (_gpsLost
-                          ? Colors.amber.shade700
-                          : theme.colorScheme.primary)
-                      .withValues(alpha: 0.12),
+                  color: locColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   _gpsLost
                       ? Icons.gps_off_rounded
-                      : Icons.location_on_rounded,
+                      : _offRoute
+                          ? Icons.map_outlined
+                          : Icons.location_on_rounded,
                   size: 18,
-                  color: _gpsLost
-                      ? Colors.amber.shade700
-                      : theme.colorScheme.primary,
+                  color: locColor,
                 ),
               ),
               const SizedBox(width: 12),
@@ -796,10 +869,14 @@ class _ConductorAttendanceScreenState
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      currentStop?['name'] as String? ?? 'Starting',
+                      _offRoute
+                          ? 'Off Route'
+                          : currentStop?['name'] as String? ?? 'Starting',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
+                        color: _offRoute
+                            ? Colors.red.shade700
+                            : theme.colorScheme.onSurface,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),

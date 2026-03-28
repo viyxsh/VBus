@@ -42,6 +42,8 @@ const _hi = {
   'Remind me before the 8 PM booking window opens': 'रात 8 बजे की बुकिंग विंडो खुलने से पहले याद दिलाएं',
   'Custom Pin Alerts': 'कस्टम पिन अलर्ट',
   'Alert me when the bus nears my saved map pins': 'बस मेरे सहेजे गए पिन के पास आने पर सूचित करें',
+  'Bus Arrival Alert': 'बस आगमन अलर्ट',
+  'Notify me when the bus arrives at my stop': 'जब बस मेरे स्टॉप पर पहुंचे तो मुझे सूचित करें',
   'Appearance': 'स्वरूप',
   'Dark': 'डार्क',
   'Light': 'लाइट',

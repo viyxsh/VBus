@@ -33,7 +33,6 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   List<LatLng> _routePoints = [];
   bool _hasActiveTrip = false;
   LatLng? _myLocation;
-  bool _gpsAvailable = false;
 
   bool _loading = true;
   StreamSubscription<Position>? _locationSub;
@@ -240,7 +239,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   Future<void> _startTracking() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      if (mounted) setState(() { _gpsAvailable = false; _myLocation = null; });
+      if (mounted) setState(() { _myLocation = null; });
       return;
     }
 
@@ -250,7 +249,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     }
     if (permission == LocationPermission.deniedForever ||
         permission == LocationPermission.denied) {
-      if (mounted) setState(() { _gpsAvailable = false; _myLocation = null; });
+      if (mounted) setState(() { _myLocation = null; });
       return;
     }
 
@@ -262,7 +261,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     ).listen(
       (pos) async {
         final loc = LatLng(pos.latitude, pos.longitude);
-        if (mounted) setState(() { _gpsAvailable = true; _myLocation = loc; });
+        if (mounted) setState(() { _myLocation = loc; });
 
       // Only broadcast to passengers during an active trip
       if (!_hasActiveTrip || _tripId == null) return;
@@ -279,18 +278,24 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
         debugPrint('[CONDUCTOR_MAP] upsert error: $e');
       }
     },
-    onError: (_) {
-      if (mounted) setState(() { _gpsAvailable = false; _myLocation = null; });
+      onError: (_) {
+      if (mounted) setState(() { _myLocation = null; });
     });
   }
 
   void _recenter() {
-    if (_myLocation == null) return;
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: _myLocation!, zoom: 15),
-      ),
-    );
+    if (_hasActiveTrip) {
+      final target = _myLocation ?? _busMarkerPosition;
+      if (target != null) {
+        _mapController?.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: target, zoom: 15),
+          ),
+        );
+        return;
+      }
+    }
+    _fitBounds();
   }
 
   // ─── Map helpers ──────────────────────────────────────────────────────────────
@@ -402,7 +407,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
                     right: 12,
                     bottom: 175,
                     child: _MapControls(
-                      gpsAvailable: _gpsAvailable,
+                      hasActiveTrip: _hasActiveTrip,
                       onRecenter: _recenter,
                     ),
                   ),
@@ -631,11 +636,11 @@ class _ConductorBottomSheet extends StatelessWidget {
 // ─── Custom map controls ──────────────────────────────────────────────────────
 
 class _MapControls extends StatelessWidget {
-  final bool gpsAvailable;
+  final bool hasActiveTrip;
   final VoidCallback onRecenter;
 
   const _MapControls({
-    required this.gpsAvailable,
+    required this.hasActiveTrip,
     required this.onRecenter,
   });
 
@@ -648,10 +653,10 @@ class _MapControls extends StatelessWidget {
       elevation: 3,
       child: _btn(
         svgPath: 'assets/icons/gps.svg',
-        color: gpsAvailable
+        color: hasActiveTrip
             ? theme.colorScheme.primary
             : theme.colorScheme.onSurfaceVariant,
-        onTap: gpsAvailable ? onRecenter : null,
+        onTap: onRecenter,
       ),
     );
   }
