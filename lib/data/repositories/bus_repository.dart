@@ -37,12 +37,18 @@ class BusRepository {
     return List<Map<String, dynamic>>.from(data as List);
   }
 
-  /// Removes a passenger from a bus by marking them rejected.
+  /// Removes a passenger from a bus by clearing bus_id and marking rejected.
   Future<void> rejectPassenger(String passengerId) async {
     if (AppConfig.demoMode) return;
+    await supabase.from(SupabaseConstants.seatBookings).delete().eq(
+      'passenger_id', passengerId,
+    ).gte('booking_date', DateTime.now().toIso8601String().substring(0, 10));
     await supabase
         .from(SupabaseConstants.passengers)
-        .update({'approval_status': 'rejected'})
+        .update({
+          'approval_status': 'rejected',
+          'bus_id': null,
+        })
         .eq('id', passengerId);
   }
 
