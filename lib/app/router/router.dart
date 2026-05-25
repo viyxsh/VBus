@@ -7,6 +7,7 @@ import '../../core/enums/approval_status.dart';
 import '../../core/enums/user_role.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/screens/bus_select_screen.dart';
 import '../../features/auth/screens/pending_approval_screen.dart';
 import '../../features/auth/screens/passenger_registration_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
@@ -117,6 +118,11 @@ GoRouter router(Ref ref) {
         pageBuilder: (_, state) =>
             _fadePage(state, const PendingApprovalScreen()),
       ),
+      GoRoute(
+        path: '/auth/bus-select',
+        pageBuilder: (_, state) =>
+            _fadePage(state, const BusSelectScreen()),
+      ),
 
       // Conductor
       GoRoute(
@@ -214,9 +220,18 @@ class _RouterNotifier extends ChangeNotifier {
         }
         if (user.approvalStatus == ApprovalStatus.pending ||
             user.approvalStatus == ApprovalStatus.rejected) {
-          return path == '/auth/pending-approval'
-              ? null
-              : '/auth/pending-approval';
+          if (path == '/auth/pending-approval' ||
+              path == '/auth/bus-select') {
+            return null;
+          }
+          return '/auth/pending-approval';
+        }
+        // Approved but no bus assigned — need to select one
+        if (user.busId == null) {
+          if (path == '/auth/bus-select' || path == '/auth/pending-approval') {
+            return null;
+          }
+          return '/auth/bus-select';
         }
         if (path.startsWith('/passenger') || path.startsWith('/chat')) return null;
         return '/passenger/home';

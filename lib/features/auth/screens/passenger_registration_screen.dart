@@ -171,7 +171,7 @@ class _PassengerRegistrationScreenState
         phone: _phoneController.text.trim(),
         userType: _userType,
         cityId: _selectedCity!['id'] as String,
-        busId: _selectedBus!['id'] as String,
+        busId: _selectedBus?['id'] as String?,
         stopId: _selectedStop!['id'] as String,
         receiptPath: receiptPath,
         approved: _userType == 'faculty' || (kDebugMode && _devBypass),

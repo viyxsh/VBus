@@ -21,7 +21,7 @@ void main() async {
 
   assert(
     AppConfig.supabaseUrl.isNotEmpty,
-    'SUPABASE_URL is empty — run with: flutter run --dart-define-from-file=.env.json',
+    'SUPABASE_URL is empty — check that --dart-define-from-file=.env.json is provided, or that a fallback default is set in AppConfig.',
   );
 
   await NotificationService.init();

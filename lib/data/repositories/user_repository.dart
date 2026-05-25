@@ -57,6 +57,16 @@ class UserRepository {
     return profile?['approval_status'] as String?;
   }
 
+  /// The bus_id for a passenger, or null if they have none.
+  Future<String?> passengerBusId(String userId) async {
+    final profile = await supabase
+        .from(SupabaseConstants.passengers)
+        .select('bus_id')
+        .eq('id', userId)
+        .maybeSingle();
+    return profile?['bus_id'] as String?;
+  }
+
   /// Display name for the current user — passenger name, else staff display
   /// name / username, else 'Unknown'.
   Future<String> currentUserDisplayName() async {

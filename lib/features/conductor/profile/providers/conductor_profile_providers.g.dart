@@ -184,5 +184,139 @@ class _BusPassengersProviderElement
   String get busId => (origin as BusPassengersProvider).busId;
 }
 
+String _$busRequestsHash() => r'a0b649cb84557c009b6fbfd551ed0f52dbe5a7fd';
+
+/// Pending bus join requests for the conductor's bus.
+///
+/// Copied from [busRequests].
+@ProviderFor(busRequests)
+const busRequestsProvider = BusRequestsFamily();
+
+/// Pending bus join requests for the conductor's bus.
+///
+/// Copied from [busRequests].
+class BusRequestsFamily extends Family<AsyncValue<List<Map<String, dynamic>>>> {
+  /// Pending bus join requests for the conductor's bus.
+  ///
+  /// Copied from [busRequests].
+  const BusRequestsFamily();
+
+  /// Pending bus join requests for the conductor's bus.
+  ///
+  /// Copied from [busRequests].
+  BusRequestsProvider call(String busId) {
+    return BusRequestsProvider(busId);
+  }
+
+  @override
+  BusRequestsProvider getProviderOverride(
+    covariant BusRequestsProvider provider,
+  ) {
+    return call(provider.busId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'busRequestsProvider';
+}
+
+/// Pending bus join requests for the conductor's bus.
+///
+/// Copied from [busRequests].
+class BusRequestsProvider
+    extends AutoDisposeFutureProvider<List<Map<String, dynamic>>> {
+  /// Pending bus join requests for the conductor's bus.
+  ///
+  /// Copied from [busRequests].
+  BusRequestsProvider(String busId)
+    : this._internal(
+        (ref) => busRequests(ref as BusRequestsRef, busId),
+        from: busRequestsProvider,
+        name: r'busRequestsProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$busRequestsHash,
+        dependencies: BusRequestsFamily._dependencies,
+        allTransitiveDependencies: BusRequestsFamily._allTransitiveDependencies,
+        busId: busId,
+      );
+
+  BusRequestsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.busId,
+  }) : super.internal();
+
+  final String busId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<Map<String, dynamic>>> Function(BusRequestsRef provider)
+    create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: BusRequestsProvider._internal(
+        (ref) => create(ref as BusRequestsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        busId: busId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<Map<String, dynamic>>> createElement() {
+    return _BusRequestsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is BusRequestsProvider && other.busId == busId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, busId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin BusRequestsRef
+    on AutoDisposeFutureProviderRef<List<Map<String, dynamic>>> {
+  /// The parameter `busId` of this provider.
+  String get busId;
+}
+
+class _BusRequestsProviderElement
+    extends AutoDisposeFutureProviderElement<List<Map<String, dynamic>>>
+    with BusRequestsRef {
+  _BusRequestsProviderElement(super.provider);
+
+  @override
+  String get busId => (origin as BusRequestsProvider).busId;
+}
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

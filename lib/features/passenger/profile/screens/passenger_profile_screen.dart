@@ -14,6 +14,7 @@ import '../../../../data/repositories/passenger_repository.dart';
 import '../../seat_booking/widgets/booking_history_sheet.dart';
 import '../providers/passenger_profile_providers.dart';
 import '../widgets/pin_location_picker.dart';
+import '../../../auth/providers/auth_provider.dart';
 
 class PassengerProfileScreen extends ConsumerStatefulWidget {
   const PassengerProfileScreen({super.key});
@@ -104,6 +105,44 @@ class _PassengerProfileScreenState
     }
   }
 
+  Future<void> _leaveBus(Map<String, dynamic> profile) async {
+    final bus = profile['buses']?['bus_number'] as String? ?? '';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Leave Bus'),
+        content: Text('Are you sure you want to leave Bus $bus? You can request a different bus later.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Leave Bus'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      try {
+        await ref.read(passengerRepositoryProvider).leaveBus();
+        ref.invalidate(passengerProfileProvider);
+        ref.invalidate(authStateProvider);
+      } catch (e) {
+        debugPrint('[LEAVE_BUS] error: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('Failed to leave bus. Please try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ));
+        }
+      }
+    }
+  }
+
   void _showEditProfile(Map<String, dynamic> profile) {
     showModalBottomSheet(
       context: context,
@@ -154,7 +193,7 @@ class _PassengerProfileScreenState
         data: (profile) {
           final name      = profile['name']  as String? ?? '';
           final email     = profile['email'] as String? ?? '';
-          final busId     = profile['bus_id'] as String;
+          final busId     = profile['bus_id'] as String?;
           final avatarUrl = ref.read(passengerRepositoryProvider).currentAvatarUrl;
           final initials  = name.trim().isNotEmpty
               ? name.trim().split(' ').map((w) => w[0]).take(2).join().toUpperCase()
@@ -215,9 +254,10 @@ class _PassengerProfileScreenState
                 _row('assets/icons/history.svg', S.t(context, 'Seat Booking History'),
                     onTap: _showBookingHistory, theme: theme),
                 _divider(theme),
-                _row('assets/icons/gps.svg', S.t(context, 'Custom Stop Pins'),
-                    subtitle: S.t(context, 'Manage your saved pins'),
-                    onTap: () => _showCustomPins(busId), theme: theme),
+                if (busId != null)
+                  _row('assets/icons/gps.svg', S.t(context, 'Custom Stop Pins'),
+                      subtitle: S.t(context, 'Manage your saved pins'),
+                      onTap: () => _showCustomPins(busId), theme: theme),
               ], theme),
 
               // ── Notifications ─────────────────────────────────────────────────
@@ -265,6 +305,12 @@ class _PassengerProfileScreenState
               // ── Support ───────────────────────────────────────────────────────
               _sectionLabel(S.t(context, 'Support'), theme),
               _card([
+                if (busId != null) ...[
+                  _row('assets/icons/bus.svg', 'Leave Bus',
+                      subtitle: 'Remove yourself from this bus',
+                      onTap: () => _leaveBus(profile), theme: theme),
+                  _divider(theme),
+                ],
                 _row('assets/icons/sign-out-alt.svg', S.t(context, 'Log Out'),
                     color: theme.colorScheme.error,
                     onTap: _signOut, theme: theme),

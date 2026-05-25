@@ -151,7 +151,7 @@ class PassengerRepository {
   }
 
   /// Removes the passenger from their current bus (sets bus_id to null).
-  /// Creates a leave request record for audit and clears active seat bookings.
+  /// Creates a leave request record for audit.
   Future<void> leaveBus() async {
     if (AppConfig.demoMode) return;
     final userId = supabase.auth.currentUser!.id;
@@ -183,15 +183,18 @@ class PassengerRepository {
   /// needed to compute seat labels.
   Future<List<Map<String, dynamic>>> recentSeatBookings() async {
     final userId = supabase.auth.currentUser!.id;
-    final busId = (await supabase
+    final profile = await supabase
         .from(SupabaseConstants.passengers)
         .select('bus_id')
         .eq('id', userId)
-        .single())['bus_id'] as String;
+        .maybeSingle();
+    final busId = profile?['bus_id'] as String?;
+    if (busId == null) return [];
 
-    final today = DateTime.now();
-    final fromDate = DateTime(today.year, today.month, today.day - 6);
-    final fromStr = fromDate.toIso8601String().substring(0, 10);
+    final fromStr = DateTime.now()
+        .subtract(const Duration(days: 6))
+        .toIso8601String()
+        .substring(0, 10);
 
     final data = await supabase
         .from(SupabaseConstants.seatBookings)

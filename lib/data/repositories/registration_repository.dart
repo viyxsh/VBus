@@ -59,8 +59,8 @@ class RegistrationRepository {
     return storagePath;
   }
 
-  /// Creates or updates the passenger profile, then refreshes the session so
-  /// the auth state re-resolves the new approval status.
+  /// Creates or updates the passenger profile without setting bus_id.
+  /// A separate bus_requests record is created for the conductor to approve.
   Future<void> registerPassenger({
     required String name,
     required String instituteId,
@@ -68,7 +68,7 @@ class RegistrationRepository {
     required String phone,
     required String userType,
     required String cityId,
-    required String busId,
+    required String? busId,
     required String stopId,
     required String? receiptPath,
     required bool approved,
@@ -81,11 +81,21 @@ class RegistrationRepository {
       'phone': phone,
       'user_type': userType,
       'city_id': cityId,
-      'bus_id': busId,
+      'bus_id': null,
       'stop_id': stopId,
       'receipt_url': receiptPath,
       'approval_status': approved ? 'approved' : 'pending',
     });
+
+    if (busId != null) {
+      await supabase.from(SupabaseConstants.busRequests).insert({
+        'passenger_id': supabase.auth.currentUser!.id,
+        'bus_id': busId,
+        'status': 'pending',
+        'request_type': 'join',
+      });
+    }
+
     await supabase.auth.refreshSession();
   }
 
