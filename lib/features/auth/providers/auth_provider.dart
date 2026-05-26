@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/enums/approval_status.dart';
 import '../../../core/enums/user_role.dart';
+import '../../../core/services/bus_request_notification_service.dart';
 import '../../../core/services/message_notification_service.dart';
 import '../../../core/utils/email_utils.dart';
 import '../../../data/repositories/user_repository.dart';
@@ -17,7 +18,8 @@ Stream<AuthUser?> authState(Ref ref) {
     debugPrint('[AUTH] event=${event.event}, session=${event.session != null}');
     final session = event.session;
     if (session == null) {
-      // User signed out — stop listening for messages
+      // User signed out — stop all notification services
+      BusRequestNotificationService.stop();
       MessageNotificationService.stop();
       return null;
     }
@@ -31,6 +33,7 @@ Stream<AuthUser?> authState(Ref ref) {
     debugPrint('[AUTH] step: conductor check');
     if (email.endsWith('@vbus.internal')) {
       debugPrint('[AUTH] role=conductor');
+      BusRequestNotificationService.start();
       MessageNotificationService.start();
       return AuthUser(id: user.id, email: email, role: UserRole.conductor);
     }
@@ -48,10 +51,11 @@ Stream<AuthUser?> authState(Ref ref) {
     // Passenger — check profile existence and approval status
     debugPrint('[AUTH] step: fetching passenger profile');
     try {
-      final status =
-          await ref.read(userRepositoryProvider).passengerApprovalStatus(user.id);
+      final userRepo = ref.read(userRepositoryProvider);
+      final status = await userRepo.passengerApprovalStatus(user.id);
+      final busId = status != null ? await userRepo.passengerBusId(user.id) : null;
 
-      debugPrint('[AUTH] approval_status=$status');
+      debugPrint('[AUTH] approval_status=$status bus_id=$busId');
 
       final authUser = AuthUser(
         id: user.id,
@@ -59,8 +63,9 @@ Stream<AuthUser?> authState(Ref ref) {
         role: UserRole.passenger,
         approvalStatus:
             status != null ? ApprovalStatusX.fromString(status) : null,
+        busId: busId,
       );
-      debugPrint('[AUTH] returning user, approvalStatus=${authUser.approvalStatus}');
+      debugPrint('[AUTH] returning user, approvalStatus=${authUser.approvalStatus} busId=${authUser.busId}');
       // Start listening for chat messages once the user is fully resolved
       if (authUser.approvalStatus?.name == 'approved') {
         MessageNotificationService.start();
@@ -78,11 +83,13 @@ class AuthUser {
   final String email;
   final UserRole role;
   final ApprovalStatus? approvalStatus; // null means no profile yet
+  final String? busId; // null means no bus assigned
 
   const AuthUser({
     required this.id,
     required this.email,
     required this.role,
     this.approvalStatus,
+    this.busId,
   });
 }

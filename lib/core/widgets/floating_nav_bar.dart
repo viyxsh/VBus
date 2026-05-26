@@ -7,11 +7,13 @@ class NavItem {
   final String linePath;
   final String boldPath;
   final String label;
+  final int unreadCount;
 
   const NavItem({
     required this.linePath,
     required this.boldPath,
     required this.label,
+    this.unreadCount = 0,
   });
 }
 
@@ -82,16 +84,47 @@ class FloatingNavBar extends StatelessWidget {
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        child: SvgPicture.asset(
-                          isActive ? item.boldPath : item.linePath,
-                          width: 24,
-                          height: 24,
-                          colorFilter: ColorFilter.mode(
-                            isActive
-                                ? Colors.white
-                                : theme.colorScheme.onSurfaceVariant,
-                            BlendMode.srcIn,
-                          ),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            SvgPicture.asset(
+                              isActive ? item.boldPath : item.linePath,
+                              width: 24,
+                              height: 24,
+                              colorFilter: ColorFilter.mode(
+                                isActive
+                                    ? Colors.white
+                                    : theme.colorScheme.onSurfaceVariant,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            if (item.unreadCount > 0)
+                              Positioned(
+                                right: -6,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.error,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 16, minHeight: 14),
+                                  child: Text(
+                                    item.unreadCount > 99
+                                        ? '99+'
+                                        : item.unreadCount.toString(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 4),
