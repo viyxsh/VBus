@@ -7,8 +7,11 @@ import '../../../../core/l10n/strings.dart';
 import '../../../../core/providers/locale_provider.dart';
 import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/bus_repository.dart';
+import '../../../../data/repositories/bus_request_repository.dart';
 import '../providers/conductor_profile_providers.dart';
 
 class ConductorProfileScreen extends ConsumerStatefulWidget {
@@ -101,6 +104,18 @@ class _ConductorProfileScreenState
     );
   }
 
+  void _showBusRequests(Map<String, dynamic> profile) {
+    final busId = profile['bus_id'] as String;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _BusRequestsSheet(profile: profile, busId: busId),
+    );
+  }
+
   // ─── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -190,9 +205,20 @@ class _ConductorProfileScreenState
                     onTap: _showBusControls, theme: theme),
                 _divider(theme),
                 _row('assets/icons/passengers.svg', S.t(context, 'Manage Passengers'),
-                    subtitle: S.t(context, 'Add or remove passengers from bus'),
+                    subtitle: S.t(context, 'Remove passengers from bus'),
                     onTap: () => _showManagePassengers(profile['bus_id'] as String),
                     theme: theme),
+                _divider(theme),
+                Consumer(builder: (context, ref, _) {
+                  final busId = profile['bus_id'] as String;
+                  final requestsAsync = ref.watch(busRequestsProvider(busId));
+                  final count = requestsAsync.valueOrNull?.length ?? 0;
+                  return _row('assets/icons/passengers.svg', 'View Requests',
+                      subtitle: 'Pending bus join requests',
+                      badge: count > 0 ? count.toString() : null,
+                      onTap: () => _showBusRequests(profile),
+                      theme: theme);
+                }),
               ], theme),
 
               // ── General ───────────────────────────────────────────────────────
@@ -260,7 +286,8 @@ class _ConductorProfileScreenState
   );
 
   Widget _row(String svgPath, String label, {
-    String? subtitle, VoidCallback? onTap, Color? color, required ThemeData theme,
+    String? subtitle, VoidCallback? onTap, Color? color, String? badge,
+    required ThemeData theme,
   }) {
     final iconColor  = color ?? theme.colorScheme.onSurfaceVariant;
     final labelColor = color ?? theme.colorScheme.onSurface;
@@ -280,6 +307,27 @@ class _ConductorProfileScreenState
               Text(subtitle, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
             ],
           ])),
+          if (badge != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                constraints: const BoxConstraints(minWidth: 20, minHeight: 18),
+                child: Text(
+                  badge,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           if (onTap != null)
             SvgPicture.asset('assets/icons/angle-small-right.svg', width: 18, height: 18,
                 colorFilter: ColorFilter.mode(theme.colorScheme.onSurfaceVariant, BlendMode.srcIn)),
@@ -767,6 +815,270 @@ class _ManagePassengersSheetState
               fontSize: 9,
               fontWeight: FontWeight.w700,
               color: color)),
+    );
+  }
+}
+
+// ─── Bus Requests Sheet ──────────────────────────────────────────────────────
+
+class _BusRequestsSheet extends ConsumerStatefulWidget {
+  final Map<String, dynamic> profile;
+  final String busId;
+  const _BusRequestsSheet({required this.profile, required this.busId});
+
+  @override
+  ConsumerState<_BusRequestsSheet> createState() => _BusRequestsSheetState();
+}
+
+class _BusRequestsSheetState extends ConsumerState<_BusRequestsSheet> {
+  RealtimeChannel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribe() {
+    _channel = ref
+        .read(busRequestRepositoryProvider)
+        .subscribeToBusRequests(widget.busId, (_) {
+      ref.invalidate(busRequestsProvider(widget.busId));
+      ref.invalidate(busPassengersProvider(widget.busId));
+    });
+  }
+
+  Future<void> _approve(String requestId, String studentName) async {
+    final conductorId = widget.profile['id'] as String;
+    try {
+      await ref.read(busRequestRepositoryProvider).approveRequest(
+            requestId,
+            conductorId,
+          );
+      ref.invalidate(busRequestsProvider(widget.busId));
+      ref.invalidate(busPassengersProvider(widget.busId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$studentName has been approved'),
+          backgroundColor: Colors.green,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to approve: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _reject(String requestId, String studentName) async {
+    final reasonCtrl = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reject Request'),
+        content: TextField(
+          controller: reasonCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Reason (optional)',
+            hintText: 'e.g. Bus is full',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, reasonCtrl.text.trim()),
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || !mounted) return;
+
+    try {
+      await ref.read(busRequestRepositoryProvider).rejectRequest(
+            requestId: requestId,
+            conductorId: widget.profile['id'] as String,
+            reason: reason.isNotEmpty ? reason : null,
+          );
+      ref.invalidate(busRequestsProvider(widget.busId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$studentName has been rejected'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to reject: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bus = widget.profile['buses'] as Map;
+    final busNum = bus['bus_number'] as String? ?? '?';
+    final studentSeats = (bus['student_seats'] as num?)?.toInt() ?? 0;
+    final requestsAsync = ref.watch(busRequestsProvider(widget.busId));
+    final passengersAsync = ref.watch(busPassengersProvider(widget.busId));
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _sheetHeader(context, 'Bus Requests'),
+                const SizedBox(height: 12),
+                // Capacity card
+                passengersAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (passengers) {
+                    final approvedCount =
+                        passengers.where((p) => p['approval_status'] == 'approved').length;
+                    final available = studentSeats - approvedCount;
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.tertiaryContainer
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.event_seat,
+                              color: theme.colorScheme.tertiary, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Bus $busNum · $approvedCount / $studentSeats seats filled',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '$available available',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: available > 0
+                                  ? Colors.green
+                                  : theme.colorScheme.error,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: requestsAsync.when(
+              loading: () => const Center(child: LottieLoading()),
+              error: (e, _) => Center(
+                  child: Text('Failed to load',
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+              data: (requests) {
+                if (requests.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_outline,
+                            size: 48,
+                            color: theme.colorScheme.outlineVariant),
+                        const SizedBox(height: 12),
+                        Text('No pending requests',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  controller: controller,
+                  itemCount: requests.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, indent: 56),
+                  itemBuilder: (_, i) {
+                    final r = requests[i];
+                    final passenger = r['passengers'] as Map;
+                    final name = passenger['name'] as String? ?? 'Unknown';
+                    final instituteId =
+                        passenger['institute_id'] as String? ?? '';
+                    final type = passenger['user_type'] as String? ?? 'student';
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        child: Text(
+                          name[0].toUpperCase(),
+                          style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      title: Text(name,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        '$instituteId · ${type == 'faculty' ? 'Faculty' : 'Student'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.check_circle_outline,
+                                color: Colors.green, size: 20),
+                            tooltip: 'Approve',
+                            onPressed: () =>
+                                _approve(r['id'] as String, name),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.cancel_outlined,
+                                color: theme.colorScheme.error, size: 20),
+                            tooltip: 'Reject',
+                            onPressed: () =>
+                                _reject(r['id'] as String, name),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

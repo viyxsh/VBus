@@ -1,8 +1,15 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConfig {
-  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-  static const String supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://yhwjkvetqmleswtrwvsj.supabase.co',
+  );
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlod2prdmV0cW1sZXN3dHJ3dnNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDc5MjgsImV4cCI6MjA5MjMyMzkyOH0.6bc0oW0R0l6f90jpurdroRXJl1Wymc5pg-zfTratNFA',
+  );
 
   // Live-prototype mode: the app behaves normally but never writes to the
   // backend — seat bookings, chat, pins, profile edits and trip/attendance
@@ -16,13 +23,17 @@ class AppConfig {
   // Demo accounts for the web demo's one-tap "dummy" sign-in. Supplied via
   // --dart-define-from-file=.env.json (kept out of source control).
   static const String demoStudentEmail =
-      String.fromEnvironment('DEMO_STUDENT_EMAIL');
+      String.fromEnvironment('DEMO_STUDENT_EMAIL',
+          defaultValue: 'demo.23bce10001@vitbhopal.ac.in');
   static const String demoStudentPassword =
-      String.fromEnvironment('DEMO_STUDENT_PASSWORD');
+      String.fromEnvironment('DEMO_STUDENT_PASSWORD',
+          defaultValue: 'password');
   static const String demoConductorUsername =
-      String.fromEnvironment('DEMO_CONDUCTOR_USERNAME');
+      String.fromEnvironment('DEMO_CONDUCTOR_USERNAME',
+          defaultValue: 'conductor_demo');
   static const String demoConductorPassword =
-      String.fromEnvironment('DEMO_CONDUCTOR_PASSWORD');
+      String.fromEnvironment('DEMO_CONDUCTOR_PASSWORD',
+          defaultValue: 'password');
 
   static bool get hasDemoStudent =>
       demoStudentEmail.isNotEmpty && demoStudentPassword.isNotEmpty;
