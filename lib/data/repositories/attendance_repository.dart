@@ -158,20 +158,39 @@ class AttendanceRepository {
     return List<Map<String, dynamic>>.from(data as List);
   }
 
-  /// Creates 'waiting' attendance records for a trip's roster.
+  /// Seat-booked passenger IDs for today on the given bus.
+  Future<Set<String>> seatBookerIdsToday(String busId) async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final data = await supabase
+        .from(SupabaseConstants.seatBookings)
+        .select('passenger_id')
+        .eq('bus_id', busId)
+        .eq('booking_date', today);
+    return (data as List)
+        .map((r) => r['passenger_id'] as String)
+        .toSet();
+  }
+
+  /// Creates attendance records for a trip's roster.
+  /// Passengers with a seat booking for today start as 'waiting'.
+  /// Those without any seat booking start as 'absent'.
   Future<void> createAttendanceRecords(
     String tripId,
     List<Map<String, dynamic>> roster,
+    String busId,
   ) async {
     if (AppConfig.demoMode) return; // live prototype: no roster writes
     if (roster.isEmpty) return;
+
+    final bookers = await seatBookerIdsToday(busId);
+
     await supabase.from(SupabaseConstants.attendance).insert(
           roster
               .map((p) => {
                     'trip_id': tripId,
                     'passenger_id': p['id'],
                     'stop_id': p['stop_id'],
-                    'state': 'waiting',
+                    'state': bookers.contains(p['id']) ? 'waiting' : 'absent',
                   })
               .toList(),
         );
@@ -212,6 +231,7 @@ class AttendanceRepository {
   }
 
   /// Finds a passenger on a bus by their VIT registration number.
+  /// Finds a passenger on the given bus by registration number.
   Future<Map<String, dynamic>?> findPassengerByReg(
       String regNumber, String busId) async {
     final passenger = await supabase
@@ -219,6 +239,17 @@ class AttendanceRepository {
         .select('id, name')
         .eq('institute_id', regNumber)
         .eq('bus_id', busId)
+        .maybeSingle();
+    return passenger == null ? null : Map<String, dynamic>.from(passenger);
+  }
+
+  /// Looks up a passenger by registration number regardless of their bus.
+  /// Returns their details + bus number if found, or null if no account exists.
+  Future<Map<String, dynamic>?> findPassengerAnywhere(String regNumber) async {
+    final passenger = await supabase
+        .from(SupabaseConstants.passengers)
+        .select('id, name, bus_id, user_type, buses(bus_number)')
+        .eq('institute_id', regNumber)
         .maybeSingle();
     return passenger == null ? null : Map<String, dynamic>.from(passenger);
   }

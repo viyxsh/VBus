@@ -154,7 +154,9 @@ class _ConductorAttendanceScreenState
       );
 
       final roster = await attendance.approvedRoster(_busId);
-      await attendance.createAttendanceRecords(_trip!['id'] as String, roster);
+      await attendance.createAttendanceRecords(
+        _trip!['id'] as String, roster, _busId,
+      );
 
       _lastAdvancedIdx = 0;
       _startGpsTracking();
@@ -456,14 +458,14 @@ class _ConductorAttendanceScreenState
   }
 
   Future<void> _markPresent(String regNumber) async {
-    final passenger = await ref
-        .read(attendanceRepositoryProvider)
-        .findPassengerByReg(regNumber, _busId);
+    final attendanceRepo = ref.read(attendanceRepositoryProvider);
+    final passenger = await attendanceRepo.findPassengerAnywhere(regNumber);
 
     if (passenger == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('$regNumber — not found on this bus'),
+          content: Text(
+              '$regNumber — no account found with this registration number.'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -472,6 +474,29 @@ class _ConductorAttendanceScreenState
 
     final name = passenger['name'] as String;
     final pid = passenger['id'] as String;
+    final passengerBusId = passenger['bus_id'] as String?;
+    final busInfo = passenger['buses'] as Map?;
+    final busNumber = busInfo?['bus_number'] as String?;
+
+    if (passengerBusId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$name is not enrolled in any bus.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+      return;
+    }
+
+    if (passengerBusId != _busId) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$name belongs to Bus ${busNumber ?? passengerBusId}.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+      return;
+    }
 
     final record =
         _attendances.where((a) => a.passengerId == pid).firstOrNull;
@@ -515,7 +540,7 @@ class _ConductorAttendanceScreenState
       if (confirm != true) return;
     }
 
-    await ref.read(attendanceRepositoryProvider).markPresent(record.id);
+    await attendanceRepo.markPresent(record.id);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -526,6 +551,53 @@ class _ConductorAttendanceScreenState
     }
 
     await _loadAttendances();
+  }
+
+  /// Manually mark a passenger as present (for faculty or when scan fails).
+  Future<void> _manualMarkPresent(_AttendanceItem item) async {
+    final name = item.name;
+    final stopName = item.stopName;
+
+    if (item.state == 'missing') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Stop already passed'),
+          content: Text(
+            '$name was marked missing — their stop ($stopName) '
+            'has already been passed. Mark them present anyway?',
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Mark Present')),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    try {
+      await ref.read(attendanceRepositoryProvider).markPresent(item.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('✓ $name marked present'),
+          backgroundColor: Colors.green.shade700,
+          duration: const Duration(seconds: 2),
+        ));
+      }
+      await _loadAttendances();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to mark present: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────────
@@ -1089,7 +1161,9 @@ class _ConductorAttendanceScreenState
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: item.state == 'waiting' || item.state == 'missing' || item.state == 'absent'
+            ? () => _manualMarkPresent(item)
+            : null,
         splashColor: color.withValues(alpha: 0.06),
         highlightColor: color.withValues(alpha: 0.03),
         child: Container(
