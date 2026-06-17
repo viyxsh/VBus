@@ -131,8 +131,11 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? theme.colorScheme.surface : Colors.white,
-      body: Column(
-        children: [
+      // Clip to the body bounds so the content card's drop shadow can't bleed
+      // below into the navigation-bar area.
+      body: ClipRect(
+        child: Column(
+          children: [
           // ── Dark header ────────────────────────────────────────────────────
           Container(
             decoration: const BoxDecoration(
@@ -249,45 +252,56 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
 
           // ── Chat list — overlaps header by 28px ────────────────────────────
           Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, -28),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? theme.colorScheme.surface : Colors.white,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDark ? 0.30 : 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, -6),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Transform.translate(
+                offset: const Offset(0, -28),
+                // OverflowBox makes the card 28px taller so that, once shifted
+                // up, it still reaches the bottom — otherwise its drop shadow
+                // floats as a band above the navbar.
+                child: OverflowBox(
+                  alignment: Alignment.topCenter,
+                  minHeight: constraints.maxHeight + 28,
+                  maxHeight: constraints.maxHeight + 28,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? theme.colorScheme.surface : Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.30 : 0.12),
+                          blurRadius: 24,
+                          offset: const Offset(0, -6),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: inboxAsync.when(
-                  loading: () => const Center(child: LottieLoading()),
-                  error: (e, _) => _buildError(theme),
-                  data: (data) {
-                    final filtered = _filtered(data);
-                    return RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: filtered.isEmpty
-                          ? _buildEmpty(theme)
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(
-                                  top: 14, bottom: 100),
-                              itemCount: filtered.length,
-                              itemBuilder: (_, i) =>
-                                  _buildTile(filtered[i], theme),
-                            ),
-                    );
-                  },
+                    child: inboxAsync.when(
+                      loading: () => const Center(child: LottieLoading()),
+                      error: (e, _) => _buildError(theme),
+                      data: (data) {
+                        final filtered = _filtered(data);
+                        return RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: filtered.isEmpty
+                              ? _buildEmpty(theme)
+                              : ListView.builder(
+                                  padding: const EdgeInsets.only(
+                                      top: 14, bottom: 100),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (_, i) =>
+                                      _buildTile(filtered[i], theme),
+                                ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: inbox != null
           ? FloatingActionButton(

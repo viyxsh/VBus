@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/l10n/strings.dart';
+import '../../../../core/utils/error_messages.dart';
 import '../../../../data/repositories/attendance_repository.dart';
 import '../../../../data/repositories/tracking_repository.dart';
 
@@ -160,7 +162,7 @@ class _ConductorAttendanceScreenState
       debugPrint('[ATTENDANCE] start trip error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to start trip: $e'),
+          content: Text(friendlyError(e, fallback: 'Failed to start trip.')),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -517,7 +519,8 @@ class _ConductorAttendanceScreenState
               : _trip!['state'] == 'ended'
                   ? _buildTripEnded(theme)
                   : _buildAttendanceView(theme),
-      floatingActionButton: isOngoing
+      // OCR (ML Kit) is mobile-only — hide the scan action on web.
+      floatingActionButton: (isOngoing && !kIsWeb)
           ? FloatingActionButton.extended(
               heroTag: 'conductor_attendance_fab',
               backgroundColor: const Color(0xFF3D3D8F),

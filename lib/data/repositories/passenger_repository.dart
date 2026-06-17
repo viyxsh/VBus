@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
 
@@ -12,6 +13,10 @@ PassengerRepository passengerRepository(Ref ref) => PassengerRepository();
 /// Data access for the signed-in passenger: their profile, boarding stop,
 /// custom map pins and seat-booking history.
 class PassengerRepository {
+  // Live-prototype pin store: in demo mode pins live only in memory (keyed by
+  // bus) so they show on the map for the session but never hit the backend.
+  static final Map<String, List<Map<String, dynamic>>> _demoPins = {};
+
   /// The signed-in user's Google avatar URL, if any.
   String? get currentAvatarUrl =>
       supabase.auth.currentUser?.userMetadata?['avatar_url'] as String?;
@@ -33,6 +38,7 @@ class PassengerRepository {
     required String phone,
     String? stopId,
   }) async {
+    if (AppConfig.demoMode) return; // live prototype: don't persist edits
     final userId = supabase.auth.currentUser!.id;
     await supabase.from(SupabaseConstants.passengers).update({
       'name': name,
@@ -56,8 +62,27 @@ class PassengerRepository {
     return List<Map<String, dynamic>>.from(data as List);
   }
 
+  /// The stops on a bus's route with coordinates (for the pin-location picker),
+  /// ordered by stop order.
+  Future<List<Map<String, dynamic>>> routeStopsForBus(String busId) async {
+    final bus = await supabase
+        .from(SupabaseConstants.buses)
+        .select('route_id')
+        .eq('id', busId)
+        .single();
+    final data = await supabase
+        .from(SupabaseConstants.busStops)
+        .select('id, name, latitude, longitude, stop_order')
+        .eq('route_id', bus['route_id'] as String)
+        .order('stop_order');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
   /// The passenger's custom map pins for a bus, newest first.
   Future<List<Map<String, dynamic>>> customPins(String busId) async {
+    if (AppConfig.demoMode) {
+      return List<Map<String, dynamic>>.from(_demoPins[busId] ?? const []);
+    }
     final userId = supabase.auth.currentUser!.id;
     final data = await supabase
         .from('custom_pins')
@@ -69,6 +94,12 @@ class PassengerRepository {
   }
 
   Future<void> deleteCustomPin(String id) async {
+    if (AppConfig.demoMode) {
+      for (final list in _demoPins.values) {
+        list.removeWhere((p) => p['id'] == id);
+      }
+      return;
+    }
     await supabase.from('custom_pins').delete().eq('id', id);
   }
 
@@ -81,6 +112,21 @@ class PassengerRepository {
     required int notifyMinutesBefore,
   }) async {
     final userId = supabase.auth.currentUser!.id;
+    if (AppConfig.demoMode) {
+      final row = <String, dynamic>{
+        'id': 'demo-${DateTime.now().microsecondsSinceEpoch}',
+        'passenger_id': userId,
+        'bus_id': busId,
+        'label': label,
+        'latitude': latitude,
+        'longitude': longitude,
+        'notify_minutes_before': notifyMinutesBefore,
+        'created_at': DateTime.now().toIso8601String(),
+        'notified_at': null,
+      };
+      (_demoPins[busId] ??= []).insert(0, row);
+      return row;
+    }
     final data = await supabase
         .from('custom_pins')
         .insert({
@@ -97,6 +143,7 @@ class PassengerRepository {
   }
 
   Future<void> markPinNotified(String id) async {
+    if (AppConfig.demoMode) return; // live prototype: nothing to persist
     await supabase
         .from('custom_pins')
         .update({'notified_at': DateTime.now().toIso8601String()})

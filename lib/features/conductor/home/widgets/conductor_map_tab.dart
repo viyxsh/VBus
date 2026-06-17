@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
@@ -11,6 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../core/services/route_service.dart';
+import '../../../../../core/widgets/web_map_placeholder.dart';
 import '../../../../../data/repositories/tracking_repository.dart';
 
 class ConductorMapTab extends ConsumerStatefulWidget {
@@ -378,27 +380,32 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(23.15, 77.15),
-                    zoom: 10,
+                // Web demo has no Maps JS workflow — show a placeholder.
+                if (kIsWeb)
+                  const Positioned.fill(child: WebMapPlaceholder())
+                else
+                  GoogleMap(
+                    initialCameraPosition: const CameraPosition(
+                      target: LatLng(23.15, 77.15),
+                      zoom: 10,
+                    ),
+                    onMapCreated: _onMapCreated,
+                    markers: _buildMarkers(),
+                    polylines: _buildPolylines(),
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    padding: const EdgeInsets.only(bottom: 80),
                   ),
-                  onMapCreated: _onMapCreated,
-                  markers: _buildMarkers(),
-                  polylines: _buildPolylines(),
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  padding: const EdgeInsets.only(bottom: 80),
-                ),
                 // GPS recenter button above the route list
-                Positioned(
-                  right: 12,
-                  bottom: 175,
-                  child: _MapControls(
-                    gpsAvailable: _gpsAvailable,
-                    onRecenter: _recenter,
+                if (!kIsWeb)
+                  Positioned(
+                    right: 12,
+                    bottom: 175,
+                    child: _MapControls(
+                      gpsAvailable: _gpsAvailable,
+                      onRecenter: _recenter,
+                    ),
                   ),
-                ),
                 DraggableScrollableSheet(
                   initialChildSize: 0.22,
                   minChildSize: 0.12,

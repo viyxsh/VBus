@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,6 +22,7 @@ class MessageNotificationService {
   static RealtimeChannel? _channel;
 
   static Future<void> start() async {
+    if (kIsWeb) return; // local notifications aren't supported on web
     await stop();
 
     final client = Supabase.instance.client;

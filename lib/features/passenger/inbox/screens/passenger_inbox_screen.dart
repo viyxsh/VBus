@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/l10n/strings.dart';
+import '../../../../core/utils/error_messages.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../../../data/models/inbox_room.dart';
 import '../../../../data/repositories/chat_repository.dart';
@@ -43,7 +44,7 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to start chat: $e'),
+          content: Text(friendlyError(e, fallback: 'Failed to start chat.')),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -60,8 +61,11 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? theme.colorScheme.surface : Colors.white,
-      body: Column(
-        children: [
+      // Clip to the body bounds so the content card's drop shadow can't bleed
+      // below into the navigation-bar area.
+      body: ClipRect(
+        child: Column(
+          children: [
           // ── Gradient header ───────────────────────────────────────────────
           Container(
             decoration: const BoxDecoration(
@@ -97,47 +101,59 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
 
           // ── Content card — overlaps header ────────────────────────────────
           Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, -28),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? theme.colorScheme.surface : Colors.white,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDark ? 0.30 : 0.12),
-                      blurRadius: 24,
-                      offset: const Offset(0, -6),
-                    ),
-                  ],
-                ),
-                child: inboxAsync.when(
-                  loading: () => const Center(child: LottieLoading()),
-                  error: (e, _) => _buildError(theme),
-                  data: (inbox) => RefreshIndicator(
-                    onRefresh: _refresh,
-                    child: ListView(
-                      padding: const EdgeInsets.only(top: 14, bottom: 20),
-                      children: [
-                        if (inbox.broadcast != null)
-                          _buildTile(inbox.broadcast!, theme)
-                        else
-                          _buildUnavailableTile('Bus ${inbox.busNumber}',
-                              'assets/icons/passengers.svg', theme),
-                        if (inbox.direct != null)
-                          _buildTile(inbox.direct!, theme)
-                        else
-                          _buildStartDMTile(inbox, theme),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Transform.translate(
+                offset: const Offset(0, -28),
+                // OverflowBox makes the card 28px taller so that, once shifted
+                // up, it still reaches the bottom — otherwise its drop shadow
+                // floats as a band above the navbar.
+                child: OverflowBox(
+                  alignment: Alignment.topCenter,
+                  minHeight: constraints.maxHeight + 28,
+                  maxHeight: constraints.maxHeight + 28,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? theme.colorScheme.surface : Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.30 : 0.12),
+                          blurRadius: 24,
+                          offset: const Offset(0, -6),
+                        ),
                       ],
+                    ),
+                    child: inboxAsync.when(
+                      loading: () => const Center(child: LottieLoading()),
+                      error: (e, _) => _buildError(theme),
+                      data: (inbox) => RefreshIndicator(
+                        onRefresh: _refresh,
+                        child: ListView(
+                          padding:
+                              const EdgeInsets.only(top: 14, bottom: 20),
+                          children: [
+                            if (inbox.broadcast != null)
+                              _buildTile(inbox.broadcast!, theme)
+                            else
+                              _buildUnavailableTile('Bus ${inbox.busNumber}',
+                                  'assets/icons/passengers.svg', theme),
+                            if (inbox.direct != null)
+                              _buildTile(inbox.direct!, theme)
+                            else
+                              _buildStartDMTile(inbox, theme),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
