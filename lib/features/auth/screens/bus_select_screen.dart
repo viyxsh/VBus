@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/supabase_constants.dart';
 import '../../../core/widgets/lottie_widgets.dart';
@@ -32,11 +36,18 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
   bool _requestSent = false;
   String? _pendingBusNumber;
   bool _editing = false;
+  RealtimeChannel? _approvalChannel;
 
   @override
   void initState() {
     super.initState();
     _checkExistingRequest();
+  }
+
+  @override
+  void dispose() {
+    _approvalChannel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _checkExistingRequest() async {
@@ -52,7 +63,9 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
           _initialLoading = false;
         });
       }
-      if (pending == null) {
+      if (pending != null) {
+        _subscribeToApproval();
+      } else {
         _loadCities();
       }
     } catch (_) {
@@ -104,14 +117,6 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
       final busId = _selectedBus!['id'] as String;
       final stopId = _selectedStop!['id'] as String;
 
-      final current = await supabase
-          .from(SupabaseConstants.passengers)
-          .select('approval_status, rejection_reason')
-          .eq('id', userId)
-          .single();
-      final currentStatus = current['approval_status'] as String? ?? 'pending';
-      final originalRejectionReason = current['rejection_reason'] as String?;
-
       final existing =
           await ref.read(busRequestRepositoryProvider).myPendingRequest(userId);
 
@@ -131,12 +136,11 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
         return;
       }
 
-      final updates = <String, dynamic>{'stop_id': stopId};
-      final bool wasRejected = currentStatus == 'rejected';
-      if (wasRejected) {
-        updates['approval_status'] = 'pending';
-        updates['rejection_reason'] = null;
-      }
+      final updates = <String, dynamic>{
+        'stop_id': stopId,
+        'approval_status': 'pending',
+        'rejection_reason': null,
+      };
       await supabase
           .from(SupabaseConstants.passengers)
           .update(updates)
@@ -149,19 +153,15 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
           busId: busId,
         );
       } catch (_) {
-        if (wasRejected) {
-          await supabase
-              .from(SupabaseConstants.passengers)
-              .update({
-                'approval_status': 'rejected',
-                'rejection_reason': originalRejectionReason,
-              })
-              .eq('id', userId);
-        }
+        await supabase
+            .from(SupabaseConstants.passengers)
+            .update({'approval_status': 'pending'})
+            .eq('id', userId);
         rethrow;
       }
 
       await supabase.auth.refreshSession();
+      _subscribeToApproval();
 
       if (mounted) {
         setState(() {
@@ -187,6 +187,7 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
   }
 
   void _startEditing() {
+    _approvalChannel?.unsubscribe();
     setState(() {
       _editing = true;
       _selectedCity = null;
@@ -194,6 +195,31 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
       _selectedStop = null;
     });
     _loadCities();
+  }
+
+  void _subscribeToApproval() {
+    final userId = supabase.auth.currentUser!.id;
+    _approvalChannel?.unsubscribe();
+    _approvalChannel = supabase
+        .channel('bus_select_approval_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: SupabaseConstants.passengers,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: userId,
+          ),
+          callback: (payload) async {
+            final newStatus = payload.newRecord['approval_status'] as String?;
+            if (newStatus == 'approved' && mounted) {
+              await supabase.auth.refreshSession();
+              if (mounted) context.go('/passenger/home');
+            }
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _signOut() async {

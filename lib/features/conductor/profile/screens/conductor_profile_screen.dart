@@ -9,9 +9,11 @@ import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/supabase_constants.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/bus_repository.dart';
 import '../../../../data/repositories/bus_request_repository.dart';
+import '../../../../main.dart';
 import '../providers/conductor_profile_providers.dart';
 
 class ConductorProfileScreen extends ConsumerStatefulWidget {
@@ -831,7 +833,8 @@ class _BusRequestsSheet extends ConsumerStatefulWidget {
 }
 
 class _BusRequestsSheetState extends ConsumerState<_BusRequestsSheet> {
-  RealtimeChannel? _channel;
+  RealtimeChannel? _busRequestsChannel;
+  RealtimeChannel? _passengersChannel;
 
   @override
   void initState() {
@@ -841,17 +844,34 @@ class _BusRequestsSheetState extends ConsumerState<_BusRequestsSheet> {
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
+    _busRequestsChannel?.unsubscribe();
+    _passengersChannel?.unsubscribe();
     super.dispose();
   }
 
   void _subscribe() {
-    _channel = ref
+    _busRequestsChannel = ref
         .read(busRequestRepositoryProvider)
         .subscribeToBusRequests(widget.busId, (_) {
       ref.invalidate(busRequestsProvider(widget.busId));
-      ref.invalidate(busPassengersProvider(widget.busId));
     });
+
+    _passengersChannel = supabase
+        .channel('bus_passengers_${widget.busId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: SupabaseConstants.passengers,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'bus_id',
+            value: widget.busId,
+          ),
+          callback: (_) {
+            ref.invalidate(busPassengersProvider(widget.busId));
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _approve(String requestId, String studentName) async {

@@ -79,6 +79,7 @@ class _PendingApprovalScreenState
         });
 
         if (newStatus == 'approved') {
+          supabase.auth.refreshSession();
           context.go('/passenger/home');
         }
       },
