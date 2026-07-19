@@ -167,11 +167,11 @@ class SeatRepository {
       return;
     }
     final userId = supabase.auth.currentUser!.id;
-    await supabase.from(SupabaseConstants.seatBookings).insert({
-      'bus_id': busId,
-      'passenger_id': userId,
-      'seat_number': seatNumber,
-      'booking_date': dateStr,
+    await supabase.rpc('book_seat', params: {
+      'p_bus_id': busId,
+      'p_passenger_id': userId,
+      'p_seat_number': seatNumber,
+      'p_booking_date': dateStr,
     });
   }
 

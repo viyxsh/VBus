@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/supabase_constants.dart';
 import '../../../../core/l10n/strings.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../../../data/models/inbox_room.dart';
 import '../../../../data/repositories/bus_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../main.dart';
 import '../../../chat/providers/chat_providers.dart';
 
 // Colour palette for avatars (cycles by name hash)
@@ -38,6 +41,29 @@ class ConductorInboxScreen extends ConsumerStatefulWidget {
 class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
   String _filter = 'All'; // All | Unread | Students | Faculty
   String _search = '';
+  RealtimeChannel? _refreshChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshChannel = supabase
+        .channel('conductor_inbox_refresh')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: SupabaseConstants.messages,
+          callback: (_) {
+            ref.invalidate(conductorInboxProvider);
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    _refreshChannel?.unsubscribe();
+    super.dispose();
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(conductorInboxProvider);
@@ -658,7 +684,7 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
     final diff = now.difference(local).inDays;
     if (diff == 1) return S.t(context, 'Yesterday');
     if (diff < 7) return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][local.weekday - 1];
-    return '${local.day}/${local.month}';
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${(local.year % 100).toString().padLeft(2, '0')}';
   }
 }
 

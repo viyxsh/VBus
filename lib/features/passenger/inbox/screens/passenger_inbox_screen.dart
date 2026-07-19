@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/supabase_constants.dart';
 import '../../../../core/l10n/strings.dart';
 import '../../../../core/utils/error_messages.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../../../data/models/inbox_room.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../main.dart';
 import '../../../chat/providers/chat_providers.dart';
 
 class PassengerInboxScreen extends ConsumerStatefulWidget {
@@ -20,6 +23,31 @@ class PassengerInboxScreen extends ConsumerStatefulWidget {
 
 class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
   bool _creating = false;
+  RealtimeChannel? _messagesChannel;
+  RealtimeChannel? _refreshChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshChannel = supabase
+        .channel('passenger_inbox_refresh')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: SupabaseConstants.messages,
+          callback: (_) {
+            ref.invalidate(passengerInboxProvider);
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    _messagesChannel?.unsubscribe();
+    _refreshChannel?.unsubscribe();
+    super.dispose();
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(passengerInboxProvider);
@@ -309,11 +337,13 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
     final local = dt.toLocal();
-    if (local.day == now.day &&
-        local.month == now.month &&
+    if (local.day == now.day && local.month == now.month &&
         local.year == now.year) {
       return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     }
-    return '${local.day}/${local.month}';
+    final diff = now.difference(local).inDays;
+    if (diff == 1) return S.t(context, 'Yesterday');
+    if (diff < 7) return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][local.weekday - 1];
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${(local.year % 100).toString().padLeft(2, '0')}';
   }
 }

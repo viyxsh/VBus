@@ -318,5 +318,145 @@ class _BusRequestsProviderElement
   String get busId => (origin as BusRequestsProvider).busId;
 }
 
+String _$pendingSeatReservationsHash() =>
+    r'e5f34e801b132886d6b424ebea5682ed11140674';
+
+/// Pending seat reservation requests for the conductor's bus.
+///
+/// Copied from [pendingSeatReservations].
+@ProviderFor(pendingSeatReservations)
+const pendingSeatReservationsProvider = PendingSeatReservationsFamily();
+
+/// Pending seat reservation requests for the conductor's bus.
+///
+/// Copied from [pendingSeatReservations].
+class PendingSeatReservationsFamily
+    extends Family<AsyncValue<List<SeatReservation>>> {
+  /// Pending seat reservation requests for the conductor's bus.
+  ///
+  /// Copied from [pendingSeatReservations].
+  const PendingSeatReservationsFamily();
+
+  /// Pending seat reservation requests for the conductor's bus.
+  ///
+  /// Copied from [pendingSeatReservations].
+  PendingSeatReservationsProvider call(String busId) {
+    return PendingSeatReservationsProvider(busId);
+  }
+
+  @override
+  PendingSeatReservationsProvider getProviderOverride(
+    covariant PendingSeatReservationsProvider provider,
+  ) {
+    return call(provider.busId);
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'pendingSeatReservationsProvider';
+}
+
+/// Pending seat reservation requests for the conductor's bus.
+///
+/// Copied from [pendingSeatReservations].
+class PendingSeatReservationsProvider
+    extends AutoDisposeFutureProvider<List<SeatReservation>> {
+  /// Pending seat reservation requests for the conductor's bus.
+  ///
+  /// Copied from [pendingSeatReservations].
+  PendingSeatReservationsProvider(String busId)
+    : this._internal(
+        (ref) =>
+            pendingSeatReservations(ref as PendingSeatReservationsRef, busId),
+        from: pendingSeatReservationsProvider,
+        name: r'pendingSeatReservationsProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$pendingSeatReservationsHash,
+        dependencies: PendingSeatReservationsFamily._dependencies,
+        allTransitiveDependencies:
+            PendingSeatReservationsFamily._allTransitiveDependencies,
+        busId: busId,
+      );
+
+  PendingSeatReservationsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.busId,
+  }) : super.internal();
+
+  final String busId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<SeatReservation>> Function(
+      PendingSeatReservationsRef provider,
+    )
+    create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: PendingSeatReservationsProvider._internal(
+        (ref) => create(ref as PendingSeatReservationsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        busId: busId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<SeatReservation>> createElement() {
+    return _PendingSeatReservationsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is PendingSeatReservationsProvider && other.busId == busId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, busId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin PendingSeatReservationsRef
+    on AutoDisposeFutureProviderRef<List<SeatReservation>> {
+  /// The parameter `busId` of this provider.
+  String get busId;
+}
+
+class _PendingSeatReservationsProviderElement
+    extends AutoDisposeFutureProviderElement<List<SeatReservation>>
+    with PendingSeatReservationsRef {
+  _PendingSeatReservationsProviderElement(super.provider);
+
+  @override
+  String get busId => (origin as PendingSeatReservationsProvider).busId;
+}
+
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

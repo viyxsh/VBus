@@ -105,25 +105,10 @@ class BusRequestRepository {
   Future<void> approveRequest(String requestId, String conductorId) async {
     if (AppConfig.demoMode) return;
 
-    final request = await supabase
-        .from(SupabaseConstants.busRequests)
-        .select('passenger_id, bus_id')
-        .eq('id', requestId)
-        .single();
-
-    final passengerId = request['passenger_id'] as String;
-    final busId = request['bus_id'] as String;
-
-    await supabase.from(SupabaseConstants.busRequests).update({
-      'status': 'approved',
-      'responded_at': DateTime.now().toIso8601String(),
-      'responded_by': conductorId,
-    }).eq('id', requestId);
-
-    await supabase.from(SupabaseConstants.passengers).update({
-      'bus_id': busId,
-      'approval_status': 'approved',
-    }).eq('id', passengerId);
+    await supabase.rpc('approve_bus_request', params: {
+      'p_request_id': requestId,
+      'p_responded_by': conductorId,
+    });
   }
 
   Future<void> rejectRequest({
@@ -133,25 +118,11 @@ class BusRequestRepository {
   }) async {
     if (AppConfig.demoMode) return;
 
-    final request = await supabase
-        .from(SupabaseConstants.busRequests)
-        .select('passenger_id')
-        .eq('id', requestId)
-        .single();
-
-    final passengerId = request['passenger_id'] as String;
-
-    await supabase.from(SupabaseConstants.busRequests).update({
-      'status': 'rejected',
-      'responded_at': DateTime.now().toIso8601String(),
-      'responded_by': conductorId,
-      'rejection_reason': reason ?? 'Request rejected by conductor',
-    }).eq('id', requestId);
-
-    await supabase.from(SupabaseConstants.passengers).update({
-      'approval_status': 'rejected',
-      'rejection_reason': reason ?? 'Request rejected by conductor',
-    }).eq('id', passengerId);
+    await supabase.rpc('reject_bus_request', params: {
+      'p_request_id': requestId,
+      'p_responded_by': conductorId,
+      'p_reason': reason,
+    });
   }
 
   RealtimeChannel subscribeToBusRequests(

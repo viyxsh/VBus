@@ -2,9 +2,9 @@
 
 A Flutter application for managing and tracking university bus transport at VIT Bhopal. The system serves two user roles - passengers (students and faculty) and conductors - with a shared Supabase backend.
 
-### 🔗 Live Demo: **https://viyxsh.github.io/VBus/**
+Live Demo: **https://viyxsh.github.io/VBus/**
 
-A read-only browser build — tap **Enter Demo (Student)** or **Enter Demo (Conductor)** to explore every screen. Nothing you do is saved to the backend; it all resets on reload. See [Web Demo (Live Prototype)](#web-demo-live-prototype) for details.
+A read-only browser build -- tap Enter Demo (Student) or Enter Demo (Conductor) to explore every screen. Nothing you do is saved to the backend; it all resets on reload. See Web Demo (Live Prototype) for details.
 
 ---
 
@@ -43,6 +43,7 @@ VBUS replaces manual attendance, paper-based seat booking, and informal communic
 | Backend | Supabase (PostgreSQL, Auth, Realtime, Storage) |
 | Maps | Google Maps Flutter + OSRM (free road-following routing) |
 | OCR | Google ML Kit Text Recognition |
+| Translation | Google ML Kit On-Device Translation (Hindi/English) |
 | Notifications | flutter_local_notifications |
 | Authentication | Google OAuth (passengers), username/password (conductors) |
 
@@ -67,16 +68,26 @@ VBUS replaces manual attendance, paper-based seat booking, and informal communic
 **Seat Booking**
 - Booking window opens at 8:00 PM for the following day's trip
 - Bookings can be edited until 7:00 PM on the day of the trip
+- An edit-confirm flow prevents accidental seat changes: tap Edit, select a new seat, then Confirm
 - Seats are colour-coded: orange for faculty-reserved rows, red for student rows
 - Tap a booked seat to see who reserved it
+- A legend toggle icon in the app bar shows/hides seat colour meanings
 - A daily cron job (pg_cron) purges records older than 7 days while retaining a 7-day history
 - History is accessible from the profile screen
 
 **Inbox**
 - Broadcast group chat with the entire bus
 - Private one-to-one chat with the conductor
+- Real-time inbox preview updates via Supabase Realtime subscriptions
 - In-app call button for private chats that opens the native dialer
 - Info panel showing the other party's name, phone, ID, user type, and boarding stop
+
+**Chat & Translation**
+- On-device Hindi-to-English and English-to-Hindi translation using Google ML Kit
+- Translation appears inline inside the message bubble, separated by a dotted line
+- An arrow button beside each bubble toggles translation expand/collapse
+- Date separators between message groups (Today, Yesterday, weekday, DD/MM/YY) for WhatsApp-style timeline
+- Inbox timestamps follow the same date format
 
 **Profile**
 - Edit name and phone number
@@ -115,7 +126,8 @@ VBUS replaces manual attendance, paper-based seat booking, and informal communic
 - Broadcast group chat with all passengers
 - Private one-to-one chats with individual passengers
 - Start a new private chat with any approved passenger using the compose button
-- In-app call button for private chats
+- In-app call button for private chats (always visible; shows "Phone number not available" if missing)
+- Real-time inbox updates via Supabase Realtime subscriptions
 
 ---
 
@@ -124,6 +136,8 @@ VBUS replaces manual attendance, paper-based seat booking, and informal communic
 - Real-time messaging using Supabase Realtime with INSERT subscriptions on the messages table
 - Messages display sender name, timestamp, and a preview in the inbox
 - Local notifications for seat booking reminders and bus proximity alerts
+- SECURITY DEFINER RPC functions allow conductors to approve requests, reject passengers, and manage seat bookings without row-level security conflicts
+- Newly approved passengers see only broadcast messages sent after their approval (old messages are hidden)
 - All data is protected by row-level security policies on Supabase
 
 ---
@@ -137,11 +151,11 @@ lib/
   core/
     constants/        # AppConfig (Supabase URL, anon key)
     enums/            # ApprovalStatus, UserRole
-    services/         # RouteService (OSRM), NotificationService
+    services/         # RouteService (OSRM), NotificationService, TranslationService
     utils/            # EmailUtils
     widgets/          # Shared widgets
   data/
-    repositories/     # AuthRepository
+    repositories/     # AuthRepository, ChatRepository, etc.
   features/
     auth/             # Role selection, registration, pending approval screens
     chat/             # Shared ChatScreen used by both roles
@@ -177,7 +191,7 @@ lib/
 | messages | Chat messages with sender name and type |
 | custom_pins | User-defined map pins with notification thresholds |
 
-Row-level security is enabled on all public tables.
+Row-level security is enabled on all public tables. Conductor write operations use SECURITY DEFINER RPC functions to bypass RLS restrictions.
 
 ---
 
@@ -223,6 +237,7 @@ Configure Supabase:
 - Enable Email and Google OAuth providers in Authentication settings
 - Set Site URL to `com.vitbhopal.vbusf://login-callback`
 - Add `com.vitbhopal.vbusf://login-callback` to allowed redirect URLs
+- Run `supabase/rpc_functions.sql` in the SQL Editor to create SECURITY DEFINER functions
 - Schedule the seat booking cleanup job (requires pg_cron enabled):
 
 ```sql
@@ -263,7 +278,7 @@ A browser build is published so the app can be shown without installing anything
 
 **Live link:** https://viyxsh.github.io/VBus/
 
-The web build is a **read-only live prototype**. It runs against the real Supabase project but never writes to it — seat bookings, chat messages, custom pins, profile edits, and all conductor trip/attendance actions return a simulated success. This lets a public link be shared safely: visitors can explore every screen without altering real data or affecting one another, and any change a visitor makes resets when the page is reloaded.
+The web build is a **read-only live prototype**. It runs against the real Supabase project but never writes to it -- seat bookings, chat messages, custom pins, profile edits, and all conductor trip/attendance actions return a simulated success. This lets a public link be shared safely: visitors can explore every screen without altering real data or affecting one another, and any change a visitor makes resets when the page is reloaded.
 
 ### How demo mode works
 
@@ -271,21 +286,22 @@ The web build is a **read-only live prototype**. It runs against the real Supaba
 
 - Every repository write is intercepted and simulated; nothing reaches the backend.
 - Chat messages and custom pins are held in memory for the session so they appear instantly, then clear on reload.
-- The seat screen shows pre-filled "taken" seats and the booking window is always open.
+- The seat screen shows pre-filled taken seats and the booking window is always open.
 - The conductor attendance page shows a generated roster whose states track the live trip's position.
 - Map/GPS, notifications, and ML Kit OCR (none of which run on web) are guarded behind `kIsWeb`.
 
 ### Demo accounts and seed data
 
-On web the role-selection screen offers one-tap **Enter Demo (Student)** and **Enter Demo (Conductor)** sign-ins (the manual conductor form is hidden). These require:
+On web the role-selection screen offers one-tap Enter Demo (Student) and Enter Demo (Conductor) sign-ins (the manual conductor form is hidden). These require:
 
 1. Two Supabase Auth users created in the Dashboard:
    - Student: a student-pattern email, e.g. `demo.23bce10001@vitbhopal.ac.in`
    - Conductor: `conductor_demo@vbus.internal`
 2. The SQL scripts in [`supabase/`](supabase/) run once in the Dashboard SQL Editor, in order:
-   - `demo_account.sql` — creates the demo student passenger row and assigns a bus
-   - `demo_conductor.sql` — points that bus's conductor at the demo Auth user
-   - `demo_seed.sql` — starts a self-moving trip via `pg_cron` so the map, timeline, and ETA animate on their own
+   - `demo_account.sql` -- creates the demo student passenger row and assigns a bus
+   - `demo_conductor.sql` -- points that bus's conductor at the demo Auth user
+   - `demo_seed.sql` -- starts a self-moving trip via `pg_cron` so the map, timeline, and ETA animate on their own
+   - `rpc_functions.sql` -- creates SECURITY DEFINER RPC functions for conductor operations
 3. `.env.json` filled with `DEMO_STUDENT_EMAIL` / `DEMO_STUDENT_PASSWORD` and `DEMO_CONDUCTOR_USERNAME` / `DEMO_CONDUCTOR_PASSWORD` matching the Auth users (baked in at build time).
 
 ### Building and deploying the web bundle
@@ -317,7 +333,7 @@ The test suite covers:
 
 ## Known Limitations
 
-**Phone calls on simulator** -- The iOS Simulator has no Phone app, so the in-chat call button shows a "not supported" snackbar. It works correctly on physical devices.
+**Phone calls on simulator** -- The iOS Simulator has no Phone app, so the in-chat call button shows a not-supported snackbar. It works correctly on physical devices.
 
 **Maps on simulator** -- Google Maps tiles may not render on the iOS Simulator. Everything functions correctly on physical devices and the Android emulator.
 
@@ -326,3 +342,5 @@ The test suite covers:
 **Background notifications** -- Custom pin arrival notifications fire when the app is in the foreground or background but not when it is terminated. Full background delivery would require Firebase Cloud Messaging.
 
 **Multiple buses** -- The configuration and coordinates in this repository cover bus 11 on the Vijay Market to VIT Campus route. Additional buses can be added by inserting rows into the buses, routes, and bus_stops tables with their respective stop coordinates.
+
+**Translation model download** -- The first translation on each device requires downloading the Hindi/English language models (a few MB each). Subsequent translations are instant.

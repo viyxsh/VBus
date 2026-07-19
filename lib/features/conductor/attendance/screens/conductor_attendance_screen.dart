@@ -591,9 +591,10 @@ class _ConductorAttendanceScreenState
       }
       await _loadAttendances();
     } catch (e) {
+      debugPrint('[ATTENDANCE] mark present error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to mark present: $e'),
+          content: const Text('Failed to mark present'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }

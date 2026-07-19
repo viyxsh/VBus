@@ -14,6 +14,7 @@ class SupabaseConstants {
   static const String messages = 'messages';
   static const String messageReads = 'message_reads';
   static const String busRequests = 'bus_requests';
+  static const String seatReservations = 'seat_reservations';
 
   // Storage buckets
   static const String receiptsBucket = 'receipts';

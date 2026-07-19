@@ -30,26 +30,52 @@ class ChatRepository {
   static final Map<String, StreamController<List<ChatMessage>>> _demoCtrls = {};
 
   /// Most recent [limit] messages for a room, newest first.
+  /// If [since] is provided, only messages sent at or after that time are
+  /// returned (used to hide broadcast messages that predate a passenger's
+  /// approval).
   Future<List<ChatMessage>> recentMessages(
     String roomId, {
     int limit = 100,
+    DateTime? since,
   }) async {
-    final data = await supabase
+    var query = supabase
         .from(SupabaseConstants.messages)
-        .select('id, sender_id, sender_name, content, sent_at')
-        .eq('chat_room_id', roomId)
+        .select('id, sender_id, sender_name, content, sent_at, translations')
+        .eq('chat_room_id', roomId);
+    if (since != null) {
+      query = query.gte('sent_at', since.toIso8601String());
+    }
+    final data = await query
         .order('sent_at', ascending: false)
-        .limit(limit); // prevent OOM on long-running chats
+        .limit(limit);
     return (data as List)
         .map((m) => ChatMessage.fromMap(m as Map<String, dynamic>))
         .toList();
   }
 
+  /// Stores a translation for an existing message so it persists across
+  /// sessions and is visible to all room members.
+  Future<void> saveTranslation({
+    required String messageId,
+    required String languageCode,
+    required String translatedText,
+  }) async {
+    if (AppConfig.demoMode) return;
+    await supabase.rpc('save_translation', params: {
+      'p_message_id': messageId,
+      'p_language_code': languageCode,
+      'p_translated': translatedText,
+    });
+  }
+
   /// Live stream of a room's messages, newest first. Emits the initial page
   /// immediately, then re-emits the full list whenever a new message arrives.
+  /// If [since] is provided (e.g. a passenger's `approved_at` for a broadcast
+  /// room), only messages sent at or after that time are loaded initially.
   Stream<List<ChatMessage>> watchMessages(
     String roomId, {
     int limit = 100,
+    DateTime? since,
   }) {
     final controller = StreamController<List<ChatMessage>>();
     final messages = <ChatMessage>[];
@@ -68,7 +94,7 @@ class ChatRepository {
     }
 
     Future<void> init() async {
-      messages.addAll(await recentMessages(roomId, limit: limit));
+      messages.addAll(await recentMessages(roomId, limit: limit, since: since));
       if (controller.isClosed) return;
       controller.add(List.unmodifiable(messages));
 
@@ -130,6 +156,22 @@ class ChatRepository {
 
   Future<String> currentUserDisplayName() => _users.currentUserDisplayName();
 
+  /// The `approved_at` timestamp for the current passenger, or null if they
+  /// are a conductor or haven't been approved yet.
+  Future<DateTime?> passengerApprovedAt() async {
+    if (_users.isConductor) return null;
+    final userId = _users.currentUserId;
+    if (userId == null) return null;
+    final row = await supabase
+        .from(SupabaseConstants.passengers)
+        .select('approved_at')
+        .eq('id', userId)
+        .maybeSingle();
+    final raw = row?['approved_at'];
+    if (raw == null) return null;
+    return DateTime.parse(raw as String);
+  }
+
   /// All chat room IDs belonging to a bus (broadcast + every direct room).
   Future<List<String>> roomIdsForBus(String busId) async {
     final rooms = await supabase
@@ -179,14 +221,21 @@ class ChatRepository {
 
   /// Fetches the most recent message per room for the given room IDs in a
   /// single query, returning a map keyed by room ID.
+  /// If [since] is provided, only messages sent at or after that time are
+  /// considered (to hide broadcast previews that predate a passenger's
+  /// approval).
   Future<Map<String, Map<String, dynamic>>> _lastMessageByRoom(
-      List<String> roomIds) async {
+      List<String> roomIds, {DateTime? since}) async {
     final result = <String, Map<String, dynamic>>{};
     if (roomIds.isEmpty) return result;
-    final msgs = await supabase
+    var query = supabase
         .from(SupabaseConstants.messages)
         .select('chat_room_id, content, sent_at, sender_id')
-        .inFilter('chat_room_id', roomIds)
+        .inFilter('chat_room_id', roomIds);
+    if (since != null) {
+      query = query.gte('sent_at', since.toIso8601String());
+    }
+    final msgs = await query
         .order('sent_at', ascending: false)
         .limit(roomIds.length * 3);
     for (final m in msgs as List) {
@@ -202,13 +251,16 @@ class ChatRepository {
 
     final profile = await supabase
         .from(SupabaseConstants.passengers)
-        .select('bus_id, buses(bus_number)')
+        .select('bus_id, approved_at, buses(bus_number)')
         .eq('id', userId)
         .single();
 
     final busId = profile['bus_id'] as String;
     final busNumber =
         (profile['buses'] as Map?)?['bus_number']?.toString() ?? '?';
+    final approvedAt = profile['approved_at'] != null
+        ? DateTime.parse(profile['approved_at'] as String)
+        : null;
 
     final results = await Future.wait([
       supabase
@@ -244,7 +296,7 @@ class ChatRepository {
       if (broadcastData != null) broadcastData['id'] as String,
       if (dmData != null) dmData['id'] as String,
     ];
-    final lastByRoom = await _lastMessageByRoom(roomIds);
+    final lastByRoom = await _lastMessageByRoom(roomIds, since: approvedAt);
 
     InboxRoom toRoom(String id, String title, bool isBroadcast,
         {String? phone}) {

@@ -6,7 +6,7 @@ part of 'chat_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatMessagesHash() => r'06eab01dfe0b487325e5f3442116d8af9c8a5665';
+String _$chatMessagesHash() => r'25d3df4e53375fa1220649e8bc569a37df6a2237';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,32 +30,40 @@ class _SystemHash {
 }
 
 /// Live messages for a chat room (initial page + realtime inserts).
+/// If [since] is provided (e.g. a passenger's approved_at for a broadcast
+/// room), only messages sent at or after that time are loaded.
 ///
 /// Copied from [chatMessages].
 @ProviderFor(chatMessages)
 const chatMessagesProvider = ChatMessagesFamily();
 
 /// Live messages for a chat room (initial page + realtime inserts).
+/// If [since] is provided (e.g. a passenger's approved_at for a broadcast
+/// room), only messages sent at or after that time are loaded.
 ///
 /// Copied from [chatMessages].
 class ChatMessagesFamily extends Family<AsyncValue<List<ChatMessage>>> {
   /// Live messages for a chat room (initial page + realtime inserts).
+  /// If [since] is provided (e.g. a passenger's approved_at for a broadcast
+  /// room), only messages sent at or after that time are loaded.
   ///
   /// Copied from [chatMessages].
   const ChatMessagesFamily();
 
   /// Live messages for a chat room (initial page + realtime inserts).
+  /// If [since] is provided (e.g. a passenger's approved_at for a broadcast
+  /// room), only messages sent at or after that time are loaded.
   ///
   /// Copied from [chatMessages].
-  ChatMessagesProvider call(String roomId) {
-    return ChatMessagesProvider(roomId);
+  ChatMessagesProvider call(String roomId, {DateTime? since}) {
+    return ChatMessagesProvider(roomId, since: since);
   }
 
   @override
   ChatMessagesProvider getProviderOverride(
     covariant ChatMessagesProvider provider,
   ) {
-    return call(provider.roomId);
+    return call(provider.roomId, since: provider.since);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -74,16 +82,20 @@ class ChatMessagesFamily extends Family<AsyncValue<List<ChatMessage>>> {
 }
 
 /// Live messages for a chat room (initial page + realtime inserts).
+/// If [since] is provided (e.g. a passenger's approved_at for a broadcast
+/// room), only messages sent at or after that time are loaded.
 ///
 /// Copied from [chatMessages].
 class ChatMessagesProvider
     extends AutoDisposeStreamProvider<List<ChatMessage>> {
   /// Live messages for a chat room (initial page + realtime inserts).
+  /// If [since] is provided (e.g. a passenger's approved_at for a broadcast
+  /// room), only messages sent at or after that time are loaded.
   ///
   /// Copied from [chatMessages].
-  ChatMessagesProvider(String roomId)
+  ChatMessagesProvider(String roomId, {DateTime? since})
     : this._internal(
-        (ref) => chatMessages(ref as ChatMessagesRef, roomId),
+        (ref) => chatMessages(ref as ChatMessagesRef, roomId, since: since),
         from: chatMessagesProvider,
         name: r'chatMessagesProvider',
         debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -93,6 +105,7 @@ class ChatMessagesProvider
         allTransitiveDependencies:
             ChatMessagesFamily._allTransitiveDependencies,
         roomId: roomId,
+        since: since,
       );
 
   ChatMessagesProvider._internal(
@@ -103,9 +116,11 @@ class ChatMessagesProvider
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.roomId,
+    required this.since,
   }) : super.internal();
 
   final String roomId;
+  final DateTime? since;
 
   @override
   Override overrideWith(
@@ -121,6 +136,7 @@ class ChatMessagesProvider
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         roomId: roomId,
+        since: since,
       ),
     );
   }
@@ -132,13 +148,16 @@ class ChatMessagesProvider
 
   @override
   bool operator ==(Object other) {
-    return other is ChatMessagesProvider && other.roomId == roomId;
+    return other is ChatMessagesProvider &&
+        other.roomId == roomId &&
+        other.since == since;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, roomId.hashCode);
+    hash = _SystemHash.combine(hash, since.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -149,6 +168,9 @@ class ChatMessagesProvider
 mixin ChatMessagesRef on AutoDisposeStreamProviderRef<List<ChatMessage>> {
   /// The parameter `roomId` of this provider.
   String get roomId;
+
+  /// The parameter `since` of this provider.
+  DateTime? get since;
 }
 
 class _ChatMessagesProviderElement
@@ -158,6 +180,8 @@ class _ChatMessagesProviderElement
 
   @override
   String get roomId => (origin as ChatMessagesProvider).roomId;
+  @override
+  DateTime? get since => (origin as ChatMessagesProvider).since;
 }
 
 String _$currentUserDisplayNameHash() =>

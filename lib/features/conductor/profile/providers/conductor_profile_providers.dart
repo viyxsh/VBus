@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../data/repositories/bus_repository.dart';
 import '../../../../data/repositories/bus_request_repository.dart';
+import '../../../../data/repositories/seat_reservation_repository.dart';
+import '../../../../data/models/seat_reservation.dart';
 
 part 'conductor_profile_providers.g.dart';
 
@@ -20,3 +22,8 @@ Future<List<Map<String, dynamic>>> busPassengers(Ref ref, String busId) =>
 @riverpod
 Future<List<Map<String, dynamic>>> busRequests(Ref ref, String busId) =>
     ref.watch(busRequestRepositoryProvider).pendingRequestsForBus(busId);
+
+/// Pending seat reservation requests for the conductor's bus.
+@riverpod
+Future<List<SeatReservation>> pendingSeatReservations(Ref ref, String busId) =>
+    ref.watch(seatReservationRepositoryProvider).pendingReservationsForBus(busId);

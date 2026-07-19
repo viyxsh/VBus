@@ -130,6 +130,7 @@ class _PendingApprovalScreenState
 
   Widget _buildPendingView(ThemeData theme) {
     final busNumber = _busRequest?['buses']?['bus_number'] as String?;
+    final hasActiveRequest = _busRequest?['status'] == 'pending';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -144,15 +145,19 @@ class _PendingApprovalScreenState
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.hourglass_top_rounded,
+              hasActiveRequest
+                  ? Icons.hourglass_top_rounded
+                  : Icons.error_outline,
               size: 44,
-              color: theme.colorScheme.primary,
+              color: hasActiveRequest
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.error,
             ),
           ),
         ),
         const SizedBox(height: 28),
         Text(
-          'Request Pending',
+          hasActiveRequest ? 'Request Pending' : 'No Active Request',
           textAlign: TextAlign.center,
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
@@ -160,9 +165,11 @@ class _PendingApprovalScreenState
         ),
         const SizedBox(height: 12),
         Text(
-          busNumber != null
-              ? 'Your request to join Bus $busNumber has been sent to the conductor. You\'ll be notified once it\'s approved.'
-              : 'Your request has been submitted and is being reviewed by the conductor.',
+          hasActiveRequest
+              ? (busNumber != null
+                  ? 'Your request to join Bus $busNumber has been sent. You\'ll be notified once it\'s approved.'
+                  : 'Your request has been submitted and is being reviewed.')
+              : 'Your account shows a pending status but no active bus request was found. Please submit a new request.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -172,7 +179,41 @@ class _PendingApprovalScreenState
         const SizedBox(height: 40),
         _buildStatusCard(theme, busNumber),
         const SizedBox(height: 32),
-        _buildWhatHappensNext(theme),
+        if (hasActiveRequest) ...[
+          _buildWhatHappensNext(theme),
+          const SizedBox(height: 32),
+          OutlinedButton.icon(
+            onPressed: _requestAnotherBus,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Edit Request'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'You can change your bus or stop selection.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ] else ...[
+          FilledButton.icon(
+            onPressed: _requestAnotherBus,
+            icon: const Icon(Icons.directions_bus_outlined, size: 18),
+            label: const Text('Request a Bus'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -213,23 +254,7 @@ class _PendingApprovalScreenState
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  busNumber != null
-                      ? 'Waiting for conductor of Bus $busNumber'
-                      : 'Waiting for conductor approval',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
               ],
-            ),
-          ),
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
             ),
           ),
         ],

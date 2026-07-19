@@ -40,16 +40,9 @@ class BusRepository {
   /// Removes a passenger from a bus by clearing bus_id and marking rejected.
   Future<void> rejectPassenger(String passengerId) async {
     if (AppConfig.demoMode) return;
-    await supabase.from(SupabaseConstants.seatBookings).delete().eq(
-      'passenger_id', passengerId,
-    ).gte('booking_date', DateTime.now().toIso8601String().substring(0, 10));
-    await supabase
-        .from(SupabaseConstants.passengers)
-        .update({
-          'approval_status': 'rejected',
-          'bus_id': null,
-        })
-        .eq('id', passengerId);
+    await supabase.rpc('remove_passenger', params: {
+      'p_passenger_id': passengerId,
+    });
   }
 
   // ─── Conductor profile / bus config ──────────────────────────────────────

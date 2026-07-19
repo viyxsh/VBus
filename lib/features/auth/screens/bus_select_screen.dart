@@ -136,29 +136,24 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
         return;
       }
 
-      final updates = <String, dynamic>{
-        'stop_id': stopId,
-        'approval_status': 'pending',
-        'rejection_reason': null,
-      };
+      // Cancel old requests first (safe – only touches bus_requests)
+      await ref.read(busRequestRepositoryProvider).cancelPendingRequests(userId);
+
+      // Create the new join request – if this fails, passengers table is untouched
+      await ref.read(busRequestRepositoryProvider).createJoinRequest(
+        passengerId: userId,
+        busId: busId,
+      );
+
+      // Only update passengers after the request is confirmed
       await supabase
           .from(SupabaseConstants.passengers)
-          .update(updates)
+          .update({
+            'stop_id': stopId,
+            'approval_status': 'pending',
+            'rejection_reason': null,
+          })
           .eq('id', userId);
-
-      await ref.read(busRequestRepositoryProvider).cancelPendingRequests(userId);
-      try {
-        await ref.read(busRequestRepositoryProvider).createJoinRequest(
-          passengerId: userId,
-          busId: busId,
-        );
-      } catch (_) {
-        await supabase
-            .from(SupabaseConstants.passengers)
-            .update({'approval_status': 'pending'})
-            .eq('id', userId);
-        rethrow;
-      }
 
       await supabase.auth.refreshSession();
       _subscribeToApproval();
@@ -303,8 +298,8 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
               const SizedBox(height: 12),
               Text(
                 _pendingBusNumber != null
-                    ? 'Your request to join Bus $_pendingBusNumber has been sent to the conductor. You\'ll be notified once it\'s approved.'
-                    : 'Your request has been sent to the conductor. You\'ll be notified once it\'s approved.',
+                    ? 'Your request to join Bus $_pendingBusNumber has been sent. You\'ll be notified once it\'s approved.'
+                    : 'Your request has been submitted. You\'ll be notified once it\'s approved.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -324,7 +319,7 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Waiting for conductor to approve your request',
+                        'Waiting for approval',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
