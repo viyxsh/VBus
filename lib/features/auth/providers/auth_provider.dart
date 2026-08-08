@@ -26,8 +26,6 @@ Stream<AuthUser?> authState(Ref ref) {
 
     final user = session.user;
     final email = user.email ?? '';
-    debugPrint('[AUTH] email=$email');
-    debugPrint('[AUTH] uid=${user.id}');
 
     // Conductor
     debugPrint('[AUTH] step: conductor check');

@@ -21,19 +21,26 @@ class AppConfig {
       _demoModeOverride.isEmpty ? kIsWeb : _demoModeOverride == 'true';
 
   // Demo accounts for the web demo's one-tap "dummy" sign-in. Supplied via
-  // --dart-define-from-file=.env.json (kept out of source control).
-  static const String demoStudentEmail =
-      String.fromEnvironment('DEMO_STUDENT_EMAIL',
-          defaultValue: 'demo.23bce10001@vitbhopal.ac.in');
-  static const String demoStudentPassword =
-      String.fromEnvironment('DEMO_STUDENT_PASSWORD',
-          defaultValue: 'password');
-  static const String demoConductorUsername =
-      String.fromEnvironment('DEMO_CONDUCTOR_USERNAME',
-          defaultValue: 'conductor_demo');
-  static const String demoConductorPassword =
-      String.fromEnvironment('DEMO_CONDUCTOR_PASSWORD',
-          defaultValue: 'password');
+  // --dart-define-from-file=.env.json (kept out of source control). No
+  // defaults here on purpose: without an explicit env file the demo sign-in
+  // buttons stay hidden and the shared demo accounts can't be reached from
+  // mobile or a rebuilt web bundle.
+  static const String demoStudentEmail = String.fromEnvironment(
+    'DEMO_STUDENT_EMAIL',
+    defaultValue: '',
+  );
+  static const String demoStudentPassword = String.fromEnvironment(
+    'DEMO_STUDENT_PASSWORD',
+    defaultValue: '',
+  );
+  static const String demoConductorUsername = String.fromEnvironment(
+    'DEMO_CONDUCTOR_USERNAME',
+    defaultValue: '',
+  );
+  static const String demoConductorPassword = String.fromEnvironment(
+    'DEMO_CONDUCTOR_PASSWORD',
+    defaultValue: '',
+  );
 
   static bool get hasDemoStudent =>
       demoStudentEmail.isNotEmpty && demoStudentPassword.isNotEmpty;
