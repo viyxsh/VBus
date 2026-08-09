@@ -64,7 +64,7 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
       await _refresh();
       if (mounted) {
         context.push('/chat/$roomId', extra: {
-          'title': inbox.conductorName,
+          'title': inbox.conductorName ?? S.t(context, 'Conductor'),
           'isBroadcast': false,
           'phone': inbox.conductorPhone,
         });
@@ -205,7 +205,10 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
       title: Row(
         children: [
           Flexible(
-            child: Text(room.title,
+            child: Text(
+                room.isBroadcast
+                    ? '${S.t(context, 'Bus')} ${room.title}'
+                    : room.title,
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis),
@@ -256,7 +259,7 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
       title: Row(
         children: [
           Flexible(
-            child: Text(inbox.conductorName,
+            child: Text(inbox.conductorName ?? S.t(context, 'Conductor'),
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis),

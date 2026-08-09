@@ -11,6 +11,7 @@ import '../../../core/widgets/lottie_widgets.dart';
 import '../../../data/models/chat_message.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../providers/chat_providers.dart';
+import '../widgets/chat_info_sheet.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -82,7 +83,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       debugPrint('[CHAT] send error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(e, fallback: 'Message not sent. Try again.')),
+          content: Text(friendlyError(
+              e, fallback: S.t(context, 'Message not sent. Try again.'))),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -129,7 +131,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       debugPrint('[CHAT] translate error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Translation failed. Try again.'),
+          content: Text(S.t(context, 'Translation failed. Try again.')),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -145,12 +147,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _ChatInfoSheet(
+      builder: (_) => ChatInfoSheet(
         roomId: widget.roomId,
         title: widget.title,
         phone: widget.phone,
       ),
     );
+  }
+
+  /// App-bar title: broadcast rooms are labeled "Bus 12" style (the repo
+  /// stores the raw bus number as the title); a missing direct-room name
+  /// falls back to the other party's role label.
+  String get _appBarTitle {
+    if (widget.isBroadcast) {
+      return '${S.t(context, 'Bus')} ${widget.title}';
+    }
+    if (widget.title.isEmpty) {
+      return S.t(
+          context,
+          ref.read(chatRepositoryProvider).isConductor
+              ? 'Passenger'
+              : 'Conductor');
+    }
+    return widget.title;
   }
 
   @override
@@ -160,7 +179,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text(_appBarTitle),
         centerTitle: false,
         scrolledUnderElevation: 0,
         actions: [
@@ -169,13 +188,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               icon: Builder(builder: (ctx) => SvgPicture.asset(
                 'assets/icons/phone-call.svg', width: 22, height: 22,
                 colorFilter: ColorFilter.mode(Theme.of(ctx).colorScheme.onSurface, BlendMode.srcIn))),
-              tooltip: 'Call',
+              tooltip: S.t(context, 'Call'),
               onPressed: () async {
                 if (widget.phone == null || widget.phone!.isEmpty) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Phone number not available')),
+                      SnackBar(
+                          content:
+                              Text(S.t(context, 'Phone number not available'))),
                     );
                   }
                   return;
@@ -186,16 +206,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     Uri(scheme: 'tel', path: clean));
                 if (!launched && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text(
-                            'Calling is not supported on this device')),
+                    SnackBar(
+                        content: Text(S.t(
+                            context, 'Calling is not supported on this device'))),
                   );
                 }
               },
             ),
             IconButton(
               icon: SvgPicture.asset('assets/icons/info.svg', width: 22, height: 22),
-              tooltip: 'Info',
+              tooltip: S.t(context, 'Info'),
               onPressed: () => _showInfo(context),
             ),
           ],
@@ -243,7 +263,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               size: 48, color: theme.colorScheme.error),
           const SizedBox(height: 12),
           Text(
-            'Could not load messages',
+            S.t(context, 'Could not load messages'),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -252,7 +272,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           TextButton(
             onPressed: () =>
                 ref.invalidate(chatMessagesProvider(widget.roomId)),
-            child: const Text('Retry'),
+            child: Text(S.t(context, 'Retry')),
           ),
         ],
       ),
@@ -268,14 +288,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               size: 48, color: theme.colorScheme.outlineVariant),
           const SizedBox(height: 12),
           Text(
-            'No messages yet',
+            S.t(context, 'No messages yet'),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Say hello!',
+            S.t(context, 'Say hello!'),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.outlineVariant,
             ),
@@ -477,7 +497,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 maxLines: 4,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Type a message…',
+                  hintText: S.t(context, 'Type a message…'),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerLow,
                   contentPadding: const EdgeInsets.symmetric(
@@ -549,7 +569,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } else if (date == today.subtract(const Duration(days: 1))) {
       label = S.t(context, 'Yesterday');
     } else if (date.isAfter(today.subtract(const Duration(days: 7)))) {
-      label = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][date.weekday - 1];
+      label = [
+        'Mon',
+        'Tue',
+        'Wed',
+        'Thu',
+        'Fri',
+        'Sat',
+        'Sun',
+      ].map((d) => S.t(context, d)).toList()[date.weekday - 1];
     } else {
       label = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${(date.year % 100).toString().padLeft(2, '0')}';
     }
@@ -595,126 +623,4 @@ class _DottedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DottedLinePainter old) => old.color != color;
-}
-
-// ─── Chat Info Sheet ──────────────────────────────────────────────────────────
-
-class _ChatInfoSheet extends ConsumerWidget {
-  final String roomId;
-  final String title;
-  final String? phone;
-
-  const _ChatInfoSheet({
-    required this.roomId,
-    required this.title,
-    this.phone,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isConductor = ref.read(chatRepositoryProvider).isConductor;
-    final detailsAsync = ref.watch(chatPartnerInfoProvider(roomId));
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          // Avatar + name
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: theme.colorScheme.primaryContainer,
-            child: Text(
-              title.isNotEmpty ? title[0].toUpperCase() : '?',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(title,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text(
-            isConductor ? 'Passenger' : 'Conductor',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 20),
-          detailsAsync.when(
-            loading: () => const LottieLoading(size: 60),
-            error: (_, __) => Text('Could not load details',
-                style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant)),
-            data: (details) {
-              if (details == null) {
-                return Text('Could not load details',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant));
-              }
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _infoRow(theme, Icons.phone_outlined, 'Phone',
-                      (details['phone'] as String?)?.isNotEmpty == true
-                          ? details['phone'] as String
-                          : 'Not provided'),
-                  if (!isConductor) ...[
-                    _infoRow(theme, Icons.badge_outlined, 'ID',
-                        details['institute_id'] as String? ?? '—'),
-                    _infoRow(theme, Icons.school_outlined, 'Type',
-                        (details['user_type'] as String?) == 'faculty'
-                            ? 'Faculty'
-                            : 'Student'),
-                    _infoRow(theme, Icons.place_outlined, 'Boarding Stop',
-                        (details['bus_stops'] as Map?)?['name'] as String? ??
-                            '—'),
-                  ],
-                  if (isConductor)
-                    _infoRow(theme, Icons.email_outlined, 'Email',
-                        details['email'] as String? ?? '—'),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(ThemeData theme, IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 12),
-          Text('$label: ',
-              style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant)),
-          Expanded(
-            child: Text(value,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w500),
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
-  }
 }

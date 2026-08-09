@@ -486,7 +486,11 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            room.title,
+                            room.isBroadcast
+                                ? '${S.t(context, 'Bus')} ${room.title}'
+                                : room.title.isEmpty
+                                    ? S.t(context, 'Passenger')
+                                    : room.title,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: hasUnread
                                   ? FontWeight.w700
