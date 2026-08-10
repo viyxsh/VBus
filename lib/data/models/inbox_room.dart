@@ -29,7 +29,10 @@ class InboxRoom {
 class PassengerInbox {
   final String busId;
   final String busNumber;
-  final String conductorName;
+
+  /// Display name of the bus's conductor, or null when the bus has no staff
+  /// row yet (the UI supplies a localized fallback).
+  final String? conductorName;
   final String? conductorPhone;
   final InboxRoom? broadcast;
   final InboxRoom? direct;

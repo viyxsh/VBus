@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +23,16 @@ class ChatRepository {
   ChatRepository(this._users);
 
   final UserRepository _users;
+
+  /// User id of the signed-in account. Throws a descriptive [AuthException]
+  /// instead of crashing on a null assertion when the session has expired.
+  String get _currentUserId {
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Not signed in — session may have expired');
+    }
+    return user.id;
+  }
 
   // Live-prototype chat: in demo mode messages are held in memory per room and
   // pushed to the open stream so they appear instantly, but nothing is written
@@ -94,7 +105,13 @@ class ChatRepository {
     }
 
     Future<void> init() async {
-      messages.addAll(await recentMessages(roomId, limit: limit, since: since));
+      try {
+        messages
+            .addAll(await recentMessages(roomId, limit: limit, since: since));
+      } catch (e, st) {
+        if (!controller.isClosed) controller.addError(e, st);
+        return;
+      }
       if (controller.isClosed) return;
       controller.add(List.unmodifiable(messages));
 
@@ -135,7 +152,7 @@ class ChatRepository {
       // Echo into the in-memory store and push to the open stream; no DB write.
       final msg = ChatMessage(
         id: 'demo-${DateTime.now().microsecondsSinceEpoch}',
-        senderId: supabase.auth.currentUser!.id,
+        senderId: _currentUserId,
         senderName: senderName,
         content: content,
         sentAt: DateTime.now(),
@@ -147,7 +164,7 @@ class ChatRepository {
     }
     await supabase.from(SupabaseConstants.messages).insert({
       'chat_room_id': roomId,
-      'sender_id': supabase.auth.currentUser!.id,
+      'sender_id': _currentUserId,
       'sender_name': senderName,
       'content': content,
       'type': 'text',
@@ -219,8 +236,10 @@ class ChatRepository {
 
   // ─── Inbox ─────────────────────────────────────────────────────────────────
 
-  /// Fetches the most recent message per room for the given room IDs in a
-  /// single query, returning a map keyed by room ID.
+  /// Fetches the most recent message per room for the given room IDs, keyed by
+  /// room ID. A single bulk query can starve quieter rooms when one room is
+  /// chatty (e.g. a busy broadcast), so rooms that get no preview from the
+  /// bulk pass are backfilled with their own latest-message query.
   /// If [since] is provided, only messages sent at or after that time are
   /// considered (to hide broadcast previews that predate a passenger's
   /// approval).
@@ -228,6 +247,31 @@ class ChatRepository {
       List<String> roomIds, {DateTime? since}) async {
     final result = <String, Map<String, dynamic>>{};
     if (roomIds.isEmpty) return result;
+    final rows = await _messagesForRooms(roomIds, since: since)
+        .order('sent_at', ascending: false)
+        .limit(roomIds.length * 10);
+    for (final m in rows) {
+      final rid = m['chat_room_id'] as String;
+      result.putIfAbsent(rid, () => m);
+    }
+
+    final missing = roomIds.where((id) => !result.containsKey(id)).toList();
+    if (missing.isEmpty) return result;
+
+    final backfilled = await Future.wait(missing.map((id) async {
+      final r = await _messagesForRooms([id], since: since)
+          .order('sent_at', ascending: false)
+          .limit(1);
+      return r.isEmpty ? null : r.first;
+    }));
+    for (final m in backfilled) {
+      if (m != null) result[m['chat_room_id'] as String] = m;
+    }
+    return result;
+  }
+
+  PostgrestFilterBuilder<PostgrestList> _messagesForRooms(
+      List<String> roomIds, {DateTime? since}) {
     var query = supabase
         .from(SupabaseConstants.messages)
         .select('chat_room_id, content, sent_at, sender_id')
@@ -235,19 +279,12 @@ class ChatRepository {
     if (since != null) {
       query = query.gte('sent_at', since.toIso8601String());
     }
-    final msgs = await query
-        .order('sent_at', ascending: false)
-        .limit(roomIds.length * 3);
-    for (final m in msgs as List) {
-      final rid = m['chat_room_id'] as String;
-      result.putIfAbsent(rid, () => m as Map<String, dynamic>);
-    }
-    return result;
+    return query;
   }
 
   /// Loads the passenger inbox (broadcast + the passenger's own direct room).
   Future<PassengerInbox> passengerInbox() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = _currentUserId;
 
     final profile = await supabase
         .from(SupabaseConstants.passengers)
@@ -287,9 +324,11 @@ class ChatRepository {
     final dmData = results[1];
     final conductorData = results[2];
 
-    final conductorName = conductorData?['display_name'] as String? ??
-        conductorData?['username'] as String? ??
-        'Conductor';
+    // Null when the bus has no staff row yet — the UI supplies the
+    // localized fallback label.
+    final conductorName =
+        (conductorData?['display_name'] ?? conductorData?['username'])
+            as String?;
     final conductorPhone = conductorData?['phone'] as String?;
 
     final roomIds = [
@@ -320,10 +359,10 @@ class ChatRepository {
       conductorName: conductorName,
       conductorPhone: conductorPhone,
       broadcast: broadcastData != null
-          ? toRoom(broadcastData['id'] as String, 'Bus $busNumber', true)
+          ? toRoom(broadcastData['id'] as String, busNumber, true)
           : null,
       direct: dmData != null
-          ? toRoom(dmData['id'] as String, conductorName, false,
+          ? toRoom(dmData['id'] as String, conductorName ?? '', false,
               phone: conductorPhone)
           : null,
     );
@@ -332,7 +371,7 @@ class ChatRepository {
   /// Creates (if needed) the current passenger's direct room with their
   /// conductor and returns its ID.
   Future<String> createDirectRoomForCurrentPassenger(String busId) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = _currentUserId;
     if (AppConfig.demoMode) return 'demo-direct-$userId';
     final room = await supabase
         .from(SupabaseConstants.chatRooms)
@@ -349,7 +388,7 @@ class ChatRepository {
   /// Loads the conductor inbox: broadcast room plus a direct room per
   /// passenger, each with its unread count resolved.
   Future<ConductorInbox> conductorInbox() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = _currentUserId;
 
     final cred = await supabase
         .from(SupabaseConstants.staffCredentials)
@@ -393,7 +432,7 @@ class ChatRepository {
           readMap[r['chat_room_id'] as String] = r['last_read_at'] as String;
         }
       } catch (e) {
-        // Continue with empty readMap.
+        debugPrint('[CHAT] read-state fetch failed: $e');
       }
     }
 
@@ -401,11 +440,11 @@ class ChatRepository {
       final since = readMap[roomId] ?? '1970-01-01T00:00:00.000Z';
       final res = await supabase
           .from(SupabaseConstants.messages)
-          .select('id')
+          .count(CountOption.exact)
           .eq('chat_room_id', roomId)
           .neq('sender_id', userId)
           .gt('sent_at', since);
-      return (res as List).length;
+      return res;
     }
 
     InboxRoom buildBase(String id, String title, bool isBroadcast,
@@ -430,7 +469,7 @@ class ChatRepository {
     if (broadcastData != null) {
       final id = broadcastData['id'] as String;
       broadcast =
-          buildBase(id, 'Bus $busNumber', true, unread: await unreadCount(id));
+          buildBase(id, busNumber, true, unread: await unreadCount(id));
     }
 
     final directs = await Future.wait(dmData.map((r) async {
@@ -438,7 +477,7 @@ class ChatRepository {
       final id = r['id'] as String;
       return buildBase(
         id,
-        p?['name'] as String? ?? 'Passenger',
+        p?['name'] as String? ?? '',
         false,
         phone: p?['phone'] as String?,
         userType: p?['user_type'] as String?,
@@ -454,7 +493,7 @@ class ChatRepository {
 
   Future<void> markRoomRead(String roomId) async {
     if (AppConfig.demoMode) return; // live prototype: no read tracking
-    final userId = supabase.auth.currentUser!.id;
+    final userId = _currentUserId;
     try {
       await supabase.from('chat_room_reads').upsert({
         'user_id': userId,
