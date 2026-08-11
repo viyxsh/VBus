@@ -60,7 +60,7 @@ class RouteService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final encoded =
             (data['routes'] as List).first['geometry'] as String;
-        _cache[key] = _decode(encoded);
+        _cache[key] = decodePolyline(encoded);
         debugPrint('[ROUTE] road polyline fetched — ${_cache[key]!.length} points');
         return _cache[key]!;
       }
@@ -79,7 +79,7 @@ class RouteService {
   }
 
   /// Standard Google encoded-polyline decoder (also used by OSRM).
-  static List<LatLng> _decode(String encoded) {
+  static List<LatLng> decodePolyline(String encoded) {
     final points = <LatLng>[];
     int index = 0;
     int lat = 0, lng = 0;
