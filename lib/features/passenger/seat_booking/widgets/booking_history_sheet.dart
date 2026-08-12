@@ -1,22 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/l10n/strings.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../profile/providers/passenger_profile_providers.dart';
+import '../models/seat_info.dart';
 
 /// Shows the passenger's seat-booking history over the last 7 days. Reused by
 /// both the seat-booking screen and the profile screen.
 class BookingHistorySheet extends ConsumerWidget {
   const BookingHistorySheet({super.key});
-
-  String _seatLabel(int seatNum, int leftSeats, int studentSeats) {
-    if (seatNum <= leftSeats) return 'L$seatNum';
-    final backCount  = studentSeats >= 6 ? 6 : studentSeats;
-    final rightCount = studentSeats - backCount;
-    final rightIdx   = seatNum - leftSeats;
-    if (rightIdx <= rightCount) return 'R$rightIdx';
-    return 'B${rightIdx - rightCount}';
-  }
 
   bool _isToday(DateTime d) {
     final now = DateTime.now();
@@ -41,7 +34,7 @@ class BookingHistorySheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
               children: [
-                Text('Seat Booking History',
+                Text(S.t(context, 'Seat Booking History'),
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
@@ -56,7 +49,7 @@ class BookingHistorySheet extends ConsumerWidget {
             child: historyAsync.when(
               loading: () => const Center(child: LottieLoading()),
               error: (e, _) => Center(
-                  child: Text('Failed to load history',
+                  child: Text(S.t(context, 'Failed to load'),
                       style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant))),
               data: (rows) {
@@ -88,7 +81,7 @@ class BookingHistorySheet extends ConsumerWidget {
                     final bus = b['buses'] as Map;
                     final leftSeats = (bus['left_seats'] as num).toInt();
                     final studentSeats = (bus['student_seats'] as num).toInt();
-                    final label = _seatLabel(seatNum, leftSeats, studentSeats);
+                    final label = seatLabel(seatNum, leftSeats, studentSeats);
                     final isToday = _isToday(date);
                     return ListTile(
                       leading: CircleAvatar(
@@ -104,7 +97,7 @@ class BookingHistorySheet extends ConsumerWidget {
                         ),
                       ),
                       title: Text(
-                        isToday ? 'Today' : fmt(date),
+                        isToday ? S.t(context, 'Today') : fmt(date),
                         style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600),
                       ),

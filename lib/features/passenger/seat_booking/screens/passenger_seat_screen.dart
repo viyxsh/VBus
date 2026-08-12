@@ -7,13 +7,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_config.dart';
 import '../../../../core/constants/supabase_constants.dart';
+import '../../../../core/utils/booking_window.dart';
 import '../../../../core/utils/error_messages.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
 import '../../../../data/models/seat_reservation.dart';
 import '../../../../data/repositories/seat_repository.dart';
 import '../../../../data/repositories/seat_reservation_repository.dart';
 import '../../../../main.dart';
+import '../models/seat_info.dart';
 import '../widgets/booking_history_sheet.dart';
+import '../widgets/booking_status_bar.dart';
 
 class PassengerSeatScreen extends ConsumerStatefulWidget {
   const PassengerSeatScreen({super.key});
@@ -33,7 +36,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   int _facultyRowsRight = 0;        // top N right rows = yellow
 
   // Seat state
-  List<_SeatInfo> _seats = [];
+  List<SeatInfo> _seats = [];
   int? _selectedSeat;
   int? _confirmedSeat;
   bool _editing = false;
@@ -51,37 +54,17 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
   // ─── Booking window ────────────────────────────────────────────────────────
 
-  static const _openHour  = 20; // 8 PM — opens for next day
-  static const _closeHour = 19; // 7 PM — locks for current day
-
-  _BookingState get _bookingState {
-    if (AppConfig.demoMode) return _BookingState.open; // always open for the demo
-    final h = DateTime.now().hour;
-    if (h >= _closeHour && h < _openHour) return _BookingState.locked;
-    return _BookingState.open;
+  BookingState get _bookingState {
+    if (AppConfig.demoMode) return BookingState.open; // always open for the demo
+    return BookingWindow.isOpen(DateTime.now())
+        ? BookingState.open
+        : BookingState.locked;
   }
 
-  Duration get _timeUntilNextEvent {
-    final now = DateTime.now();
-    final h   = now.hour;
-    final DateTime target;
-    if (h >= _closeHour && h < _openHour) {
-      target = DateTime(now.year, now.month, now.day, _openHour);
-    } else if (h < _closeHour) {
-      target = DateTime(now.year, now.month, now.day, _closeHour);
-    } else {
-      target = DateTime(now.year, now.month, now.day + 1, _closeHour);
-    }
-    return target.difference(now);
-  }
+  Duration get _timeUntilNextEvent =>
+      BookingWindow.timeUntilNextEvent(DateTime.now());
 
-  DateTime get _bookingDate {
-    final now = DateTime.now();
-    if (now.hour >= _openHour) {
-      return DateTime(now.year, now.month, now.day + 1);
-    }
-    return DateTime(now.year, now.month, now.day);
-  }
+  DateTime get _bookingDate => BookingWindow.bookingDateFor(DateTime.now());
 
   String get _bookingDateStr => _bookingDate.toIso8601String().substring(0, 10);
 
@@ -171,8 +154,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       if (idx != -1) {
         final seat = seats[idx];
         final orphaned =
-            (_userType == 'student' && seat.type == _SeatType.faculty) ||
-            (_userType == 'faculty' && seat.type == _SeatType.student);
+            (_userType == 'student' && seat.type == SeatType.faculty) ||
+            (_userType == 'faculty' && seat.type == SeatType.student);
 
         if (orphaned) {
           try {
@@ -279,16 +262,16 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   //   Left  row ≤ _facultyRowsLeft  → faculty (yellow)
   //   Right row ≤ _facultyRowsRight → faculty (yellow)
   //   everything else               → student (red)
-  List<_SeatInfo> _buildSeats() {
-    final seats = <_SeatInfo>[];
+  List<SeatInfo> _buildSeats() {
+    final seats = <SeatInfo>[];
 
     // Left column — 2 seats per row
     final facultyLeftSeats = _facultyRowsLeft * 2;
     for (int i = 1; i <= _leftSeats; i++) {
-      seats.add(_SeatInfo(
+      seats.add(SeatInfo(
         number: i,
         label:  'L$i',
-        type:   i <= facultyLeftSeats ? _SeatType.faculty : _SeatType.student,
+        type:   i <= facultyLeftSeats ? SeatType.faculty : SeatType.student,
       ));
     }
 
@@ -298,19 +281,19 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     final facultyRightSeats = _facultyRowsRight * 3;
 
     for (int i = 1; i <= rightCount; i++) {
-      seats.add(_SeatInfo(
+      seats.add(SeatInfo(
         number: _leftSeats + i,
         label:  'R$i',
-        type:   i <= facultyRightSeats ? _SeatType.faculty : _SeatType.student,
+        type:   i <= facultyRightSeats ? SeatType.faculty : SeatType.student,
       ));
     }
 
     // Back row — always student
     for (int i = 1; i <= backCount; i++) {
-      seats.add(_SeatInfo(
+      seats.add(SeatInfo(
         number: _leftSeats + rightCount + i,
         label:  'B$i',
-        type:   _SeatType.student,
+        type:   SeatType.student,
       ));
     }
 
@@ -319,8 +302,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
-  void _onSeatTap(_SeatInfo seat) {
-    if (_bookingState != _BookingState.open) return;
+  void _onSeatTap(SeatInfo seat) {
+    if (_bookingState != BookingState.open) return;
 
     // Must tap Edit first when already booked
     if (_confirmedSeat != null && !_editing) {
@@ -340,8 +323,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     }
 
     final canBook =
-        (_userType == 'faculty' && seat.type == _SeatType.faculty) ||
-        (_userType == 'student' && seat.type == _SeatType.student);
+        (_userType == 'faculty' && seat.type == SeatType.faculty) ||
+        (_userType == 'student' && seat.type == SeatType.student);
 
     if (!canBook) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -507,7 +490,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
           ? const Center(child: LottieLoading())
           : Column(
               children: [
-                _BookingStatusBar(
+                BookingStatusBar(
                   bookingState: _bookingState,
                   timeUntilNextEvent: _timeUntilNextEvent,
                   showLegend: _showLegend,
@@ -600,7 +583,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
     // Build left column widgets (pairs of 2).
     // The last pair (e.g. L17/L18) sits near the back door — add a gap before it.
-    final leftRows = <List<_SeatInfo>>[];
+    final leftRows = <List<SeatInfo>>[];
     for (int i = 0; i < leftSeats.length; i += 2) {
       leftRows.add([
         leftSeats[i],
@@ -675,8 +658,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     );
   }
 
-  Widget _buildSeat(_SeatInfo seat, ThemeData theme) {
-    final isFaculty = seat.type == _SeatType.faculty;
+  Widget _buildSeat(SeatInfo seat, ThemeData theme) {
+    final isFaculty = seat.type == SeatType.faculty;
     final baseColor = isFaculty ? _facultyColor : _studentColor;
     final isTaken   = seat.bookedBy != null && !seat.isMyBooking;
     final isSelected = _selectedSeat == seat.number;
@@ -723,7 +706,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   }
 
   Widget _buildBottomBar(ThemeData theme) {
-    final isOpen  = _bookingState == _BookingState.open;
+    final isOpen  = _bookingState == BookingState.open;
     final confirmedLabel = _confirmedSeat != null
         ? _seats.firstWhere((s) => s.number == _confirmedSeat!).label
         : 'None';
@@ -852,116 +835,6 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
                   strokeWidth: 2, color: Colors.white),
             )
           : Text(buttonLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-// ─── Models ───────────────────────────────────────────────────────────────────
-
-enum _SeatType { faculty, student }
-
-enum _BookingState { open, locked }
-
-class _SeatInfo {
-  final int number;
-  final String label;
-  final _SeatType type;
-  String? bookedBy;
-  bool isMyBooking = false;
-  bool isReserved = false; // permanently reserved for someone
-
-  _SeatInfo({
-    required this.number,
-    required this.label,
-    required this.type,
-  });
-}
-
-// ─── Isolated countdown widget ────────────────────────────────────────────────
-// Owns its own Timer so only the status bar text rebuilds every second,
-// not the entire seat layout.
-
-class _BookingStatusBar extends StatefulWidget {
-  final _BookingState bookingState;
-  final Duration timeUntilNextEvent;
-  final bool showLegend;
-  final Widget Function() buildLegend;
-
-  const _BookingStatusBar({
-    required this.bookingState,
-    required this.timeUntilNextEvent,
-    required this.showLegend,
-    required this.buildLegend,
-  });
-
-  @override
-  State<_BookingStatusBar> createState() => _BookingStatusBarState();
-}
-
-class _BookingStatusBarState extends State<_BookingStatusBar> {
-  late Duration _remaining;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _remaining = widget.timeUntilNextEvent;
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        _remaining = _remaining.inSeconds > 0
-            ? _remaining - const Duration(seconds: 1)
-            : _recompute();
-      });
-    });
-  }
-
-  Duration _recompute() {
-    final now = DateTime.now();
-    final h = now.hour;
-    if (h >= 19 && h < 20) {
-      return DateTime(now.year, now.month, now.day, 20).difference(now);
-    } else if (h < 19) {
-      return DateTime(now.year, now.month, now.day, 19).difference(now);
-    } else {
-      return DateTime(now.year, now.month, now.day + 1, 19).difference(now);
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final d = _remaining;
-    final durStr = '${d.inHours}h ${d.inMinutes % 60}m ${d.inSeconds % 60}s';
-    final isLocked = widget.bookingState == _BookingState.locked;
-
-    final message = isLocked
-        ? 'Seat selection starts in $durStr'
-        : 'Open — closes in $durStr';
-    final color = isLocked
-        ? theme.colorScheme.onSurfaceVariant
-        : Colors.green.shade700;
-
-    return Container(
-      width: double.infinity,
-      color: theme.colorScheme.surfaceContainerLow,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Column(
-        children: [
-          Text(message,
-              style: theme.textTheme.bodySmall?.copyWith(color: color)),
-          if (widget.showLegend) ...[
-            const SizedBox(height: 10),
-            widget.buildLegend(),
-          ],
-        ],
-      ),
     );
   }
 }
