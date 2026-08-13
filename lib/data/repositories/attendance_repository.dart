@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
+import '../../features/conductor/attendance/models/attendance_roster.dart';
 
 part 'attendance_repository.g.dart';
 
@@ -190,7 +191,9 @@ class AttendanceRepository {
                     'trip_id': tripId,
                     'passenger_id': p['id'],
                     'stop_id': p['stop_id'],
-                    'state': bookers.contains(p['id']) ? 'waiting' : 'absent',
+                    'state': AttendanceMachine.initialState(
+                      hasSeatBooking: bookers.contains(p['id']),
+                    ).name,
                   })
               .toList(),
         );

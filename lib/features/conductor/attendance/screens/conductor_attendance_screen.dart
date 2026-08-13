@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -12,8 +11,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/l10n/strings.dart';
 import '../../../../core/utils/error_messages.dart';
+import '../../../../core/utils/geo_utils.dart';
+import '../../../../core/utils/registration_utils.dart';
 import '../../../../data/repositories/attendance_repository.dart';
 import '../../../../data/repositories/tracking_repository.dart';
+import '../models/attendance_roster.dart';
 
 class ConductorAttendanceScreen extends ConsumerStatefulWidget {
   const ConductorAttendanceScreen({super.key});
@@ -33,10 +35,10 @@ class _ConductorAttendanceScreenState
   // Trip state
   Map<String, dynamic>? _trip;
   List<Map<String, dynamic>> _stops = []; // ordered by stop_order
-  List<_AttendanceItem> _attendances = [];
+  List<AttendanceEntry> _attendances = [];
 
   String _searchQuery = '';
-  String? _filterState;
+  AttendanceState? _filterState;
   bool _loading = true;
   bool _processing = false;
   bool _scanning = false;
@@ -111,14 +113,14 @@ class _ConductorAttendanceScreenState
       final busStop = r['bus_stops'] as Map?;
       final passenger = r['passengers'] as Map?;
       final stopOrder = (busStop?['stop_order'] as num?)?.toInt() ?? 0;
-      return _AttendanceItem(
+      return AttendanceEntry(
         id: r['id'] as String,
         passengerId: r['passenger_id'] as String,
         name: passenger?['name'] as String? ?? 'Unknown',
         stopId: r['stop_id'] as String,
         stopName: busStop?['name'] as String? ?? '?',
         stopOrder: stopOrder,
-        state: r['state'] as String,
+        state: AttendanceStateX.fromName(r['state'] as String),
         scannedAt: r['scanned_at'] != null
             ? DateTime.parse(r['scanned_at'] as String)
             : null,
@@ -126,17 +128,7 @@ class _ConductorAttendanceScreenState
     }).toList();
 
     // Current stop first, then upcoming, then past
-    items.sort((a, b) {
-      if (a.stopOrder == currentStopOrder &&
-          b.stopOrder != currentStopOrder) {
-        return -1;
-      }
-      if (a.stopOrder != currentStopOrder &&
-          b.stopOrder == currentStopOrder) {
-        return 1;
-      }
-      return a.stopOrder.compareTo(b.stopOrder);
-    });
+    AttendanceMachine.sortByCurrentStop(items, currentStopOrder);
 
     if (mounted) setState(() => _attendances = items);
   }
@@ -226,7 +218,7 @@ class _ConductorAttendanceScreenState
       final lat = (_stops[i]['latitude']  as num?)?.toDouble() ?? 0;
       final lng = (_stops[i]['longitude'] as num?)?.toDouble() ?? 0;
       if (lat == 0 && lng == 0) continue;
-      final d = _haversineKm(pos.latitude, pos.longitude, lat, lng);
+      final d = haversineKm(pos.latitude, pos.longitude, lat, lng);
       if (d < minDist) {
         minDist = d;
         nearestIdx = i;
@@ -258,7 +250,7 @@ class _ConductorAttendanceScreenState
       final slat = (stop['latitude']  as num?)?.toDouble() ?? 0;
       final slng = (stop['longitude'] as num?)?.toDouble() ?? 0;
       if (slat == 0 && slng == 0) continue;
-      if (_haversineKm(lat, lng, slat, slng) < thresholdKm) return false;
+      if (haversineKm(lat, lng, slat, slng) < thresholdKm) return false;
     }
 
     // 2. Check distance to each segment between consecutive stops
@@ -269,28 +261,12 @@ class _ConductorAttendanceScreenState
       final bLng = (_stops[i + 1]['longitude']  as num?)?.toDouble() ?? 0;
       if (aLat == 0 && aLng == 0) continue;
       if (bLat == 0 && bLng == 0) continue;
-      if (_pointToSegmentKm(lat, lng, aLat, aLng, bLat, bLng) < thresholdKm) {
+      if (pointToSegmentKm(lat, lng, aLat, aLng, bLat, bLng) < thresholdKm) {
         return false;
       }
     }
 
     return true; // nowhere near the route corridor
-  }
-
-  /// Perpendicular distance (km) from point P to the segment AB.
-  double _pointToSegmentKm(
-      double px, double py,
-      double ax, double ay,
-      double bx, double by) {
-    final abx = bx - ax;
-    final aby = by - ay;
-    final dot = abx * abx + aby * aby;
-    if (dot == 0) return _haversineKm(px, py, ax, ay); // A == B
-    var t = ((px - ax) * abx + (py - ay) * aby) / dot;
-    t = t.clamp(0.0, 1.0);
-    final cx = ax + t * abx;
-    final cy = ay + t * aby;
-    return _haversineKm(px, py, cx, cy);
   }
 
   Future<void> _advanceTo(int newIdx) async {
@@ -305,6 +281,8 @@ class _ConductorAttendanceScreenState
       for (int i = current; i < newIdx; i++) {
         await attendance.markStopWaitingMissing(
             tripId, _stops[i]['id'] as String);
+        AttendanceMachine.markStopWaitingMissing(
+            _attendances, _stops[i]['id'] as String);
       }
 
       await attendance.updateCurrentStopIndex(tripId, newIdx);
@@ -317,16 +295,6 @@ class _ConductorAttendanceScreenState
     } finally {
       if (mounted) setState(() => _processing = false);
     }
-  }
-
-  double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
-    const r = 6371.0;
-    final dLat = (lat2 - lat1) * pi / 180;
-    final dLng = (lng2 - lng1) * pi / 180;
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * pi / 180) * cos(lat2 * pi / 180) *
-        sin(dLng / 2) * sin(dLng / 2);
-    return r * 2 * atan2(sqrt(a), sqrt(1 - a));
   }
 
   void _confirmEndTrip() {
@@ -383,6 +351,7 @@ class _ConductorAttendanceScreenState
       await ref
           .read(attendanceRepositoryProvider)
           .endTrip(_trip!['id'] as String);
+      AttendanceMachine.markRemainingAbsent(_attendances);
 
       _trip!['state'] = 'ended';
       await _loadAttendances();
@@ -426,10 +395,9 @@ class _ConductorAttendanceScreenState
       }
 
       // Text found but no VIT registration number pattern
-      final match = RegExp(r'\b\d{2}[A-Z]{3}\d{5}\b')
-          .firstMatch(rawText.toUpperCase());
+      final regNumber = extractRegNumber(rawText);
 
-      if (match == null) {
+      if (regNumber == null) {
         debugPrint('[OCR] text found but no reg number: $rawText');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -442,7 +410,7 @@ class _ConductorAttendanceScreenState
         return;
       }
 
-      await _markPresent(match.group(0)!);
+      await _markPresent(regNumber);
     } catch (e) {
       debugPrint('[ATTENDANCE] scan error: $e');
       if (mounted) {
@@ -509,7 +477,7 @@ class _ConductorAttendanceScreenState
       return;
     }
 
-    if (record.state == 'present') {
+    if (record.state == AttendanceState.present) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$name is already marked present')));
@@ -518,7 +486,7 @@ class _ConductorAttendanceScreenState
     }
 
     // Warn conductor before overriding a student whose stop was already passed
-    if (record.state == 'missing' && mounted) {
+    if (record.state == AttendanceState.missing && mounted) {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -541,6 +509,7 @@ class _ConductorAttendanceScreenState
     }
 
     await attendanceRepo.markPresent(record.id);
+    AttendanceMachine.markPresent(_attendances, record.id);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -554,11 +523,11 @@ class _ConductorAttendanceScreenState
   }
 
   /// Manually mark a passenger as present (for faculty or when scan fails).
-  Future<void> _manualMarkPresent(_AttendanceItem item) async {
+  Future<void> _manualMarkPresent(AttendanceEntry item) async {
     final name = item.name;
     final stopName = item.stopName;
 
-    if (item.state == 'missing') {
+    if (item.state == AttendanceState.missing) {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -582,6 +551,7 @@ class _ConductorAttendanceScreenState
 
     try {
       await ref.read(attendanceRepositoryProvider).markPresent(item.id);
+      AttendanceMachine.markPresent(_attendances, item.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('✓ $name marked present'),
@@ -984,13 +954,13 @@ class _ConductorAttendanceScreenState
               _statChip(S.t(context, 'Total'), _attendances.length,
                   null, null, theme),
               _statChip(S.t(context, 'Present'), s['present']!,
-                  Colors.green.shade700, 'present', theme),
+                  Colors.green.shade700, AttendanceState.present, theme),
               _statChip(S.t(context, 'Missed'), s['missing']!,
-                  Colors.purple.shade400, 'missing', theme),
+                  Colors.purple.shade400, AttendanceState.missing, theme),
               _statChip(S.t(context, 'Absent'), s['absent']!,
-                  theme.colorScheme.error, 'absent', theme),
+                  theme.colorScheme.error, AttendanceState.absent, theme),
               _statChip(S.t(context, 'Waiting'), s['waiting']!,
-                  Colors.amber.shade700, 'waiting', theme),
+                  Colors.amber.shade700, AttendanceState.waiting, theme),
             ],
           ),
         ),
@@ -1062,7 +1032,7 @@ class _ConductorAttendanceScreenState
   }
 
   Widget _statChip(
-      String label, int count, Color? color, String? filterValue,
+      String label, int count, Color? color, AttendanceState? filterValue,
       ThemeData theme) {
     final isSelected = _filterState == filterValue;
     final isDark = theme.brightness == Brightness.dark;
@@ -1148,21 +1118,23 @@ class _ConductorAttendanceScreenState
     );
   }
 
-  Widget _buildCard(_AttendanceItem item, ThemeData theme) {
+  Widget _buildCard(AttendanceEntry item, ThemeData theme) {
     final color = _stateColor(item.state);
     final isDark = theme.brightness == Brightness.dark;
     final stateLabel = switch (item.state) {
-      'present' => S.t(context, 'Present'),
-      'missing' => S.t(context, 'Missed'),
-      'absent'  => S.t(context, 'Absent'),
-      _         => S.t(context, 'Waiting'),
+      AttendanceState.present => S.t(context, 'Present'),
+      AttendanceState.missing => S.t(context, 'Missed'),
+      AttendanceState.absent => S.t(context, 'Absent'),
+      AttendanceState.waiting => S.t(context, 'Waiting'),
     };
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: item.state == 'waiting' || item.state == 'missing' || item.state == 'absent'
+        onTap: item.state == AttendanceState.waiting ||
+                item.state == AttendanceState.missing ||
+                item.state == AttendanceState.absent
             ? () => _manualMarkPresent(item)
             : null,
         splashColor: color.withValues(alpha: 0.06),
@@ -1277,45 +1249,12 @@ class _ConductorAttendanceScreenState
     );
   }
 
-  Color _stateColor(String state) => switch (state) {
-        'present' => Colors.green.shade700,
-        'missing' => Colors.purple.shade400,
-        'absent' => Colors.red.shade700,
-        _ => Colors.amber.shade700,
+  Color _stateColor(AttendanceState state) => switch (state) {
+        AttendanceState.present => Colors.green.shade700,
+        AttendanceState.missing => Colors.purple.shade400,
+        AttendanceState.absent => Colors.red.shade700,
+        AttendanceState.waiting => Colors.amber.shade700,
       };
 
-  Map<String, int> _stats() => {
-        'present':
-            _attendances.where((a) => a.state == 'present').length,
-        'missing':
-            _attendances.where((a) => a.state == 'missing').length,
-        'absent':
-            _attendances.where((a) => a.state == 'absent').length,
-        'waiting':
-            _attendances.where((a) => a.state == 'waiting').length,
-      };
-}
-
-// ─── Model ────────────────────────────────────────────────────────────────────
-
-class _AttendanceItem {
-  final String id;
-  final String passengerId;
-  final String name;
-  final String stopId;
-  final String stopName;
-  final int stopOrder;
-  String state;
-  DateTime? scannedAt;
-
-  _AttendanceItem({
-    required this.id,
-    required this.passengerId,
-    required this.name,
-    required this.stopId,
-    required this.stopName,
-    required this.stopOrder,
-    required this.state,
-    this.scannedAt,
-  });
+  Map<String, int> _stats() => AttendanceMachine.stats(_attendances);
 }
