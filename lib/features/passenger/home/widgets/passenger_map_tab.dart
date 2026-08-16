@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import '../../../../core/widgets/lottie_widgets.dart';
+import '../../../../core/widgets/map_markers.dart';
 import '../../../../core/widgets/osm_map_view.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../../core/services/notification_service.dart';
 import '../../../../../core/services/route_service.dart';
 import '../../../../../core/utils/error_messages.dart';
+import '../../../../../core/utils/geo_utils.dart';
 import '../../../../../data/repositories/passenger_repository.dart';
 import '../../../../../data/repositories/tracking_repository.dart';
 import '../../profile/providers/passenger_profile_providers.dart';
@@ -84,130 +84,6 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     super.dispose();
   }
 
-  // ─── Custom marker builders ───────────────────────────────────────────────────
-
-  Future<BitmapDescriptor> _circleMarkerIcon({
-    required Color fill,
-    required Color stroke,
-    double size = 22,
-    double strokeWidth = 2.5,
-  }) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    final r = size / 2;
-    canvas.drawCircle(Offset(r, r), r - strokeWidth / 2,
-        Paint()..color = fill..style = PaintingStyle.fill);
-    canvas.drawCircle(Offset(r, r), r - strokeWidth / 2,
-        Paint()
-          ..color = stroke
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth);
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  }
-
-  Future<BitmapDescriptor> _busMarkerIconFromSvg(double size) async {
-    final completer = Completer<BitmapDescriptor>();
-    final key = GlobalKey();
-    late OverlayEntry entry;
-
-    entry = OverlayEntry(
-      builder: (_) => Positioned(
-        left: -10000, top: -10000,
-        child: RepaintBoundary(
-          key: key,
-          child: _BusIconWidget(size: size),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(entry);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        try {
-          final boundary = key.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
-          if (boundary != null) {
-            final img = await boundary.toImage(pixelRatio: 3.0);
-            final data = await img.toByteData(format: ui.ImageByteFormat.png);
-            completer.complete(
-              data != null
-                  ? BitmapDescriptor.bytes(
-                      data.buffer.asUint8List(),
-                      imagePixelRatio: 3.0,
-                    )
-                  : await _busMarkerIcon(size),
-            );
-          } else {
-            completer.complete(await _busMarkerIcon(size));
-          }
-        } catch (e) {
-          debugPrint('[PASSENGER_MAP] svg icon error: $e');
-          completer.complete(await _busMarkerIcon(size));
-        } finally {
-          entry.remove();
-        }
-      });
-    });
-
-    return completer.future;
-  }
-
-  Future<BitmapDescriptor> _busMarkerIcon(double size) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    final r = size / 2;
-    canvas.drawCircle(Offset(r, r), r - 1.5,
-        Paint()..color = const Color(0xFF3D3D8F)..style = PaintingStyle.fill);
-    canvas.drawCircle(Offset(r, r), r - 1.5,
-        Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5);
-    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
-    tp.text = TextSpan(
-      text: String.fromCharCode(Icons.directions_bus_rounded.codePoint),
-      style: TextStyle(
-        fontSize: size * 0.52,
-        fontFamily: Icons.directions_bus_rounded.fontFamily,
-        package: Icons.directions_bus_rounded.fontPackage,
-        color: Colors.white,
-      ),
-    );
-    tp.layout();
-    tp.paint(canvas, Offset((size - tp.width) / 2, (size - tp.height) / 2));
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  }
-
-  Future<BitmapDescriptor> _customPinMarkerIcon(double size) async {
-    final recorder = ui.PictureRecorder();
-    final canvas   = Canvas(recorder);
-    final r        = size / 2;
-    canvas.drawCircle(Offset(r, r), r - 1.5,
-        Paint()..color = const Color(0xFFE65100)..style = PaintingStyle.fill);
-    canvas.drawCircle(Offset(r, r), r - 1.5,
-        Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5);
-    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
-    tp.text = TextSpan(
-      text: String.fromCharCode(Icons.location_on_rounded.codePoint),
-      style: TextStyle(
-        fontSize: size * 0.52,
-        fontFamily: Icons.location_on_rounded.fontFamily,
-        package: Icons.location_on_rounded.fontPackage,
-        color: Colors.white,
-      ),
-    );
-    tp.layout();
-    tp.paint(canvas, Offset((size - tp.width) / 2, (size - tp.height) / 2));
-    final picture = recorder.endRecording();
-    final image   = await picture.toImage(size.toInt(), size.toInt());
-    final bytes   = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  }
-
   // ─── Data loading ─────────────────────────────────────────────────────────────
 
   Future<void> _load() async {
@@ -228,10 +104,12 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       _routePoints = await RouteService.getRoutePoints(_stops);
       _computeStopDistances();
 
-      _stopIcon   = await _circleMarkerIcon(fill: Colors.white, stroke: const Color(0xFF37474F), size: 32);
-      _myStopIcon = await _circleMarkerIcon(fill: Colors.green.shade600, stroke: Colors.white, size: 32, strokeWidth: 3);
-      _pinIcon    = await _customPinMarkerIcon(32);
-      final busIconFuture = _busMarkerIconFromSvg(32);
+      _stopIcon   = await circleMarkerIcon(fill: Colors.white, stroke: const Color(0xFF37474F), size: 32);
+      _myStopIcon = await circleMarkerIcon(fill: Colors.green.shade600, stroke: Colors.white, size: 32, strokeWidth: 3);
+      _pinIcon    = await customPinMarkerIcon(32);
+      final busIconFuture = mounted
+          ? busMarkerIconFromSvg(context, 32, debugTag: '[PASSENGER_MAP]')
+          : busMarkerIconFallback(32);
 
       final trip = await tracking.ongoingTripForBus(_busId);
 
@@ -298,7 +176,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       final id = pin['id'] as String;
       if (_notifiedPinIds.contains(id)) continue;
 
-      final dist = _haversineKm(
+      final dist = haversineKm(
         _busLocation!.latitude, _busLocation!.longitude,
         (pin['latitude']  as num).toDouble(),
         (pin['longitude'] as num).toDouble(),
@@ -346,16 +224,6 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     );
   }
 
-  double _haversineKm(double lat1, double lng1, double lat2, double lng2) {
-    const r = 6371.0;
-    final dLat = (lat2 - lat1) * pi / 180;
-    final dLng = (lng2 - lng1) * pi / 180;
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * pi / 180) * cos(lat2 * pi / 180) *
-        sin(dLng / 2) * sin(dLng / 2);
-    return r * 2 * atan2(sqrt(a), sqrt(1 - a));
-  }
-
   // ─── GPS-derived progress ───────────────────────────────────────────────────────
 
   // Precomputes how far along the route each stop sits, so live GPS can be
@@ -398,7 +266,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       final lat = (_stops[i]['latitude']  as num).toDouble();
       final lng = (_stops[i]['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
-      final d = _haversineKm(
+      final d = haversineKm(
           _busLocation!.latitude, _busLocation!.longitude, lat, lng);
       if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
     }
@@ -456,7 +324,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
         bestPerp  = seg[1];
         bestAlong = cumulative + seg[0];
       }
-      cumulative += _haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
+      cumulative += haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
     }
     return [bestAlong, bestPerp];
   }
@@ -503,7 +371,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
-                value: threshold,
+                initialValue: threshold,
                 decoration: InputDecoration(
                   labelText: 'Notify me before',
                   border: OutlineInputBorder(
@@ -1176,35 +1044,6 @@ class _StopRow extends StatelessWidget {
       child: Text(label,
           style: TextStyle(
               fontSize: 10, color: textColor, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-// ─── Bus icon widget (offscreen render → BitmapDescriptor) ────────────────────
-
-class _BusIconWidget extends StatelessWidget {
-  final double size;
-  const _BusIconWidget({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Color(0xFF3D3D8F),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(size * 0.22),
-          child: SvgPicture.asset(
-            'assets/icons/bus.svg',
-            colorFilter:
-                const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          ),
-        ),
-      ),
     );
   }
 }

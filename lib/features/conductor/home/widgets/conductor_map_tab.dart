@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
+import '../../../../core/widgets/map_markers.dart';
 import '../../../../core/widgets/osm_map_view.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,110 +58,6 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     super.dispose();
   }
 
-  // ─── Custom marker builders ───────────────────────────────────────────────────
-
-  Future<BitmapDescriptor> _circleMarkerIcon({
-    required Color fill,
-    required Color stroke,
-    double size = 22,
-    double strokeWidth = 2.5,
-  }) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    final r = size / 2;
-    canvas.drawCircle(Offset(r, r), r - strokeWidth / 2,
-        Paint()..color = fill..style = PaintingStyle.fill);
-    canvas.drawCircle(Offset(r, r), r - strokeWidth / 2,
-        Paint()
-          ..color = stroke
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth);
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  }
-
-  // Fallback icon — drawn with canvas only (no widget context needed).
-  Future<BitmapDescriptor> _busMarkerIconFallback(double size) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    final r = size / 2;
-    canvas.drawCircle(Offset(r, r), r - 1.5,
-        Paint()..color = const Color(0xFF3D3D8F)..style = PaintingStyle.fill);
-    canvas.drawCircle(Offset(r, r), r - 1.5,
-        Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5);
-    final tp = TextPainter(textDirection: ui.TextDirection.ltr);
-    tp.text = TextSpan(
-      text: String.fromCharCode(Icons.directions_bus_rounded.codePoint),
-      style: TextStyle(
-        fontSize: size * 0.52,
-        fontFamily: Icons.directions_bus_rounded.fontFamily,
-        package: Icons.directions_bus_rounded.fontPackage,
-        color: Colors.white,
-      ),
-    );
-    tp.layout();
-    tp.paint(canvas, Offset((size - tp.width) / 2, (size - tp.height) / 2));
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
-  }
-
-  // SVG icon — renders the custom bus.svg via an offscreen RepaintBoundary.
-  // Must be called after at least one await so the widget is in the tree.
-  Future<BitmapDescriptor> _busMarkerIconFromSvg(double size) async {
-    final completer = Completer<BitmapDescriptor>();
-    final key = GlobalKey();
-    late OverlayEntry entry;
-
-    entry = OverlayEntry(
-      builder: (_) => Positioned(
-        left: -10000,
-        top: -10000,
-        child: RepaintBoundary(
-          key: key,
-          child: _BusIconWidget(size: size),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(entry);
-
-    // Two frames: first to layout, second to paint the SVG.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        try {
-          final boundary = key.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
-          if (boundary != null) {
-            final img = await boundary.toImage(pixelRatio: 3.0);
-            final data =
-                await img.toByteData(format: ui.ImageByteFormat.png);
-            completer.complete(
-              data != null
-                  ? BitmapDescriptor.bytes(
-                      data.buffer.asUint8List(),
-                      imagePixelRatio: 3.0,
-                    )
-                  : await _busMarkerIconFallback(size),
-            );
-          } else {
-            completer.complete(await _busMarkerIconFallback(size));
-          }
-        } catch (e) {
-          debugPrint('[MAP] svg icon capture error: $e');
-          completer.complete(await _busMarkerIconFallback(size));
-        } finally {
-          entry.remove();
-        }
-      });
-    });
-
-    return completer.future;
-  }
-
   // ─── Data loading ─────────────────────────────────────────────────────────────
 
   Future<void> _load() async {
@@ -181,9 +76,11 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
           ', last: ${_stops.isNotEmpty ? _stops.last['name'] : 'none'}');
       _routePoints = await RouteService.getRoutePoints(_stops);
 
-      _stopIcon = await _circleMarkerIcon(fill: Colors.white, stroke: const Color(0xFF37474F), size: 32);
+      _stopIcon = await circleMarkerIcon(fill: Colors.white, stroke: const Color(0xFF37474F), size: 32);
       // Start SVG icon creation concurrently after several awaits (first frame is built).
-      final busIconFuture = _busMarkerIconFromSvg(32);
+      final busIconFuture = mounted
+          ? busMarkerIconFromSvg(context, 32, debugTag: '[CONDUCTOR_MAP]')
+          : busMarkerIconFallback(32);
 
       final trip = await tracking.ongoingTripForBus(_busId);
 
@@ -745,36 +642,6 @@ class _MapControls extends StatelessWidget {
         child: Center(
           child: SvgPicture.asset(svgPath, width: 20, height: 20,
               colorFilter: ColorFilter.mode(color, BlendMode.srcIn)),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Offscreen bus icon widget ────────────────────────────────────────────────
-// Rendered into a RepaintBoundary to produce the BitmapDescriptor for the map.
-
-class _BusIconWidget extends StatelessWidget {
-  final double size;
-  const _BusIconWidget({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Color(0xFF3D3D8F),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.all(size * 0.22),
-          child: SvgPicture.asset(
-            'assets/icons/bus.svg',
-            colorFilter:
-                const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          ),
         ),
       ),
     );
