@@ -1,240 +1,222 @@
 import 'package:flutter_test/flutter_test.dart';
 
-// Mirrors the attendance state machine from conductor_attendance_screen.dart
+import 'package:vbusf/features/conductor/attendance/models/attendance_roster.dart';
 
-enum AttendanceState { waiting, present, missing, absent }
-
-class MockAttendance {
-  final String passengerId;
-  final int stopOrder;
-  AttendanceState state;
-  DateTime? scannedAt;
-
-  MockAttendance({
-    required this.passengerId,
-    required this.stopOrder,
-    this.state = AttendanceState.waiting,
-    this.scannedAt,
-  });
-}
-
-// Simulates "Next Stop" — marks all waiting passengers at the current stop as missing
-List<MockAttendance> advanceStop(
-    List<MockAttendance> attendances, int currentStopOrder) {
-  return attendances.map((a) {
-    if (a.state == AttendanceState.waiting &&
-        a.stopOrder == currentStopOrder) {
-      return MockAttendance(
-        passengerId: a.passengerId,
-        stopOrder: a.stopOrder,
-        state: AttendanceState.missing,
-      );
-    }
-    return a;
-  }).toList();
-}
-
-// Simulates "End Trip" — marks all remaining waiting passengers as absent
-List<MockAttendance> endTrip(List<MockAttendance> attendances) {
-  return attendances.map((a) {
-    if (a.state == AttendanceState.waiting) {
-      return MockAttendance(
-        passengerId: a.passengerId,
-        stopOrder: a.stopOrder,
-        state: AttendanceState.absent,
-      );
-    }
-    return a;
-  }).toList();
-}
-
-// Simulates scanning an ID — marks the matching passenger as present
-List<MockAttendance> scanPassenger(
-    List<MockAttendance> attendances, String passengerId) {
-  return attendances.map((a) {
-    if (a.passengerId == passengerId &&
-        a.state == AttendanceState.waiting) {
-      return MockAttendance(
-        passengerId: a.passengerId,
-        stopOrder: a.stopOrder,
-        state: AttendanceState.present,
-        scannedAt: DateTime.now(),
-      );
-    }
-    return a;
-  }).toList();
-}
+AttendanceEntry entry(
+  String id, {
+  int stopOrder = 1,
+  String? stopId,
+  AttendanceState state = AttendanceState.waiting,
+  DateTime? scannedAt,
+}) =>
+    AttendanceEntry(
+      id: id,
+      passengerId: 'passenger-$id',
+      name: 'Passenger $id',
+      stopId: stopId ?? 'stop-$stopOrder',
+      stopName: 'Stop $stopOrder',
+      stopOrder: stopOrder,
+      state: state,
+      scannedAt: scannedAt,
+    );
 
 void main() {
-  // ─── Initial state ────────────────────────────────────────────────────────────
-  group('Initial attendance state', () {
-    test('all passengers start as waiting', () {
-      final list = [
-        MockAttendance(passengerId: 'p1', stopOrder: 1),
-        MockAttendance(passengerId: 'p2', stopOrder: 2),
-        MockAttendance(passengerId: 'p3', stopOrder: 3),
-      ];
-      expect(list.every((a) => a.state == AttendanceState.waiting), isTrue);
+  // ─── Initial state (mirrors createAttendanceRecords in the repository) ───────
+  group('initialState', () {
+    test('passenger with a seat booking today starts waiting', () {
+      expect(AttendanceMachine.initialState(hasSeatBooking: true),
+          AttendanceState.waiting);
+    });
+
+    test('passenger without a booking starts absent', () {
+      expect(AttendanceMachine.initialState(hasSeatBooking: false),
+          AttendanceState.absent);
     });
   });
 
   // ─── Scan (mark present) ──────────────────────────────────────────────────────
-  group('Scan passenger', () {
-    late List<MockAttendance> list;
+  group('markPresent', () {
+    late List<AttendanceEntry> list;
     setUp(() => list = [
-          MockAttendance(passengerId: 'p1', stopOrder: 1),
-          MockAttendance(passengerId: 'p2', stopOrder: 1),
-          MockAttendance(passengerId: 'p3', stopOrder: 2),
+          entry('p1'),
+          entry('p2'),
+          entry('p3', stopOrder: 2),
         ]);
 
-    test('marks scanned passenger as present', () {
-      final updated = scanPassenger(list, 'p1');
-      expect(updated.firstWhere((a) => a.passengerId == 'p1').state,
+    test('marks the scanned passenger present and stamps scannedAt', () {
+      final at = DateTime(2026, 9, 10, 7, 30);
+      expect(AttendanceMachine.markPresent(list, 'p1', scannedAt: at), isTrue);
+      expect(list.firstWhere((a) => a.id == 'p1').state,
           AttendanceState.present);
+      expect(list.firstWhere((a) => a.id == 'p1').scannedAt, at);
+    });
+
+    test('defaults scannedAt to now when not provided', () {
+      final before = DateTime.now();
+      AttendanceMachine.markPresent(list, 'p1');
+      final scanned = list.firstWhere((a) => a.id == 'p1').scannedAt!;
+      expect(scanned.isBefore(before) || scanned == before ||
+          scanned.isAfter(before), isTrue);
     });
 
     test('does not affect other passengers', () {
-      final updated = scanPassenger(list, 'p1');
-      expect(updated.firstWhere((a) => a.passengerId == 'p2').state,
+      AttendanceMachine.markPresent(list, 'p1');
+      expect(list.firstWhere((a) => a.id == 'p2').state,
           AttendanceState.waiting);
-      expect(updated.firstWhere((a) => a.passengerId == 'p3').state,
+      expect(list.firstWhere((a) => a.id == 'p3').state,
           AttendanceState.waiting);
     });
 
-    test('scanning an already-present passenger does nothing', () {
-      var updated = scanPassenger(list, 'p1');
-      final firstScan = updated.firstWhere((a) => a.passengerId == 'p1').scannedAt;
-      updated = scanPassenger(updated, 'p1');
-      // state remains present, scannedAt unchanged
-      final a = updated.firstWhere((a) => a.passengerId == 'p1');
-      expect(a.state, AttendanceState.present);
-      expect(a.scannedAt, firstScan);
+    test('rescanning overwrites the scan timestamp (repository semantics)',
+        () {
+      AttendanceMachine.markPresent(list, 'p1',
+          scannedAt: DateTime(2026, 9, 10, 7, 0));
+      final firstScan = list.firstWhere((a) => a.id == 'p1').scannedAt;
+
+      AttendanceMachine.markPresent(list, 'p1',
+          scannedAt: DateTime(2026, 9, 10, 7, 15));
+      final e = list.firstWhere((a) => a.id == 'p1');
+      expect(e.state, AttendanceState.present);
+      expect(e.scannedAt, isNot(firstScan));
+    });
+
+    test('can override a missing passenger (stop already passed)', () {
+      final list2 = [entry('p1', state: AttendanceState.missing)];
+      expect(AttendanceMachine.markPresent(list2, 'p1'), isTrue);
+      expect(list2.first.state, AttendanceState.present);
+    });
+
+    test('returns false for an unknown record id', () {
+      expect(AttendanceMachine.markPresent(list, 'nope'), isFalse);
     });
   });
 
   // ─── Advance stop ─────────────────────────────────────────────────────────────
-  group('advanceStop', () {
-    late List<MockAttendance> list;
+  group('markStopWaitingMissing', () {
+    late List<AttendanceEntry> list;
     setUp(() => list = [
-          MockAttendance(passengerId: 'p1', stopOrder: 1),
-          MockAttendance(passengerId: 'p2', stopOrder: 1),
-          MockAttendance(passengerId: 'p3', stopOrder: 2),
-          MockAttendance(passengerId: 'p4', stopOrder: 3),
+          entry('p1', stopId: 'stop-1'),
+          entry('p2', stopId: 'stop-1'),
+          entry('p3', stopOrder: 2, stopId: 'stop-2'),
+          entry('p4', stopOrder: 3, stopId: 'stop-3'),
         ]);
 
-    test('marks waiting passengers at current stop as missing', () {
-      final updated = advanceStop(list, 1);
-      expect(updated.firstWhere((a) => a.passengerId == 'p1').state,
+    test('marks waiting passengers at the passed stop as missing', () {
+      final changed = AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
+      expect(changed, 2);
+      expect(list.firstWhere((a) => a.id == 'p1').state,
           AttendanceState.missing);
-      expect(updated.firstWhere((a) => a.passengerId == 'p2').state,
+      expect(list.firstWhere((a) => a.id == 'p2').state,
           AttendanceState.missing);
     });
 
     test('does not affect passengers at other stops', () {
-      final updated = advanceStop(list, 1);
-      expect(updated.firstWhere((a) => a.passengerId == 'p3').state,
+      AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
+      expect(list.firstWhere((a) => a.id == 'p3').state,
           AttendanceState.waiting);
-      expect(updated.firstWhere((a) => a.passengerId == 'p4').state,
+      expect(list.firstWhere((a) => a.id == 'p4').state,
           AttendanceState.waiting);
     });
 
     test('does not change already-present passengers', () {
-      var updated = scanPassenger(list, 'p1');
-      updated = advanceStop(updated, 1);
-      // p1 was scanned, stays present
-      expect(updated.firstWhere((a) => a.passengerId == 'p1').state,
+      AttendanceMachine.markPresent(list, 'p1');
+      final changed = AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
+      expect(changed, 1);
+      expect(list.firstWhere((a) => a.id == 'p1').state,
           AttendanceState.present);
-      // p2 was not scanned, becomes missing
-      expect(updated.firstWhere((a) => a.passengerId == 'p2').state,
+      expect(list.firstWhere((a) => a.id == 'p2').state,
           AttendanceState.missing);
+    });
+
+    test('is idempotent — second pass changes nothing', () {
+      AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
+      expect(
+          AttendanceMachine.markStopWaitingMissing(list, 'stop-1'), 0);
+    });
+
+    test('returns 0 for an unknown stop', () {
+      expect(AttendanceMachine.markStopWaitingMissing(list, 'stop-x'), 0);
     });
   });
 
   // ─── End trip ─────────────────────────────────────────────────────────────────
-  group('endTrip', () {
+  group('markRemainingAbsent', () {
     test('marks all remaining waiting passengers as absent', () {
       final list = [
-        MockAttendance(passengerId: 'p1', stopOrder: 1,
-            state: AttendanceState.present),
-        MockAttendance(passengerId: 'p2', stopOrder: 2,
-            state: AttendanceState.missing),
-        MockAttendance(passengerId: 'p3', stopOrder: 3),
-        MockAttendance(passengerId: 'p4', stopOrder: 4),
+        entry('p1', state: AttendanceState.present),
+        entry('p2', state: AttendanceState.missing),
+        entry('p3', stopOrder: 3),
+        entry('p4', stopOrder: 4),
       ];
-      final ended = endTrip(list);
-      expect(ended.firstWhere((a) => a.passengerId == 'p1').state,
-          AttendanceState.present);  // unchanged
-      expect(ended.firstWhere((a) => a.passengerId == 'p2').state,
-          AttendanceState.missing);  // unchanged
-      expect(ended.firstWhere((a) => a.passengerId == 'p3').state,
-          AttendanceState.absent);   // was waiting
-      expect(ended.firstWhere((a) => a.passengerId == 'p4').state,
-          AttendanceState.absent);   // was waiting
+      final changed = AttendanceMachine.markRemainingAbsent(list);
+      expect(changed, 2);
+      expect(list.firstWhere((a) => a.id == 'p1').state,
+          AttendanceState.present); // unchanged
+      expect(list.firstWhere((a) => a.id == 'p2').state,
+          AttendanceState.missing); // unchanged
+      expect(list.firstWhere((a) => a.id == 'p3').state,
+          AttendanceState.absent); // was waiting
+      expect(list.firstWhere((a) => a.id == 'p4').state,
+          AttendanceState.absent); // was waiting
     });
 
-    test('all present at end of perfect trip', () {
-      var list = [
-        MockAttendance(passengerId: 'p1', stopOrder: 1),
-        MockAttendance(passengerId: 'p2', stopOrder: 2),
+    test('all present at end of a perfect trip', () {
+      final list = [entry('p1'), entry('p2', stopOrder: 2)];
+      AttendanceMachine.markPresent(list, 'p1');
+      AttendanceMachine.markPresent(list, 'p2');
+      AttendanceMachine.markRemainingAbsent(list);
+      expect(list.every((a) => a.state == AttendanceState.present), isTrue);
+    });
+
+    test('no-op when everyone already resolved', () {
+      final list = [
+        entry('p1', state: AttendanceState.present),
+        entry('p2', state: AttendanceState.absent),
       ];
-      list = scanPassenger(list, 'p1');
-      list = scanPassenger(list, 'p2');
-      final ended = endTrip(list);
-      expect(ended.every((a) => a.state == AttendanceState.present), isTrue);
+      expect(AttendanceMachine.markRemainingAbsent(list), 0);
     });
   });
 
   // ─── Stats computation ────────────────────────────────────────────────────────
-  group('Attendance stats', () {
-    Map<String, int> stats(List<MockAttendance> list) => {
-          'total':   list.length,
-          'present': list.where((a) => a.state == AttendanceState.present).length,
-          'missing': list.where((a) => a.state == AttendanceState.missing).length,
-          'absent':  list.where((a) => a.state == AttendanceState.absent).length,
-          'waiting': list.where((a) => a.state == AttendanceState.waiting).length,
-        };
-
+  group('stats', () {
     test('initial stats — all waiting', () {
-      final s = stats([
-        MockAttendance(passengerId: 'p1', stopOrder: 1),
-        MockAttendance(passengerId: 'p2', stopOrder: 1),
-        MockAttendance(passengerId: 'p3', stopOrder: 2),
+      final s = AttendanceMachine.stats([
+        entry('p1'),
+        entry('p2'),
+        entry('p3', stopOrder: 2),
       ]);
-      expect(s['total'],   3);
+      expect(s['total'], 3);
       expect(s['waiting'], 3);
       expect(s['present'], 0);
       expect(s['missing'], 0);
-      expect(s['absent'],  0);
+      expect(s['absent'], 0);
     });
 
-    test('stats after mixed scenario', () {
-      var list = [
-        MockAttendance(passengerId: 'p1', stopOrder: 1),
-        MockAttendance(passengerId: 'p2', stopOrder: 1),
-        MockAttendance(passengerId: 'p3', stopOrder: 2),
-        MockAttendance(passengerId: 'p4', stopOrder: 2),
+    test('stats after a mixed scenario', () {
+      final list = [
+        entry('p1'),
+        entry('p2'),
+        entry('p3', stopOrder: 2, stopId: 'stop-2'),
+        entry('p4', stopOrder: 2, stopId: 'stop-2'),
       ];
-      list = scanPassenger(list, 'p1');       // p1 → present
-      list = advanceStop(list, 1);            // p2 → missing
-      list = scanPassenger(list, 'p3');       // p3 → present
-      final s = stats(list);
+      AttendanceMachine.markPresent(list, 'p1'); // p1 → present
+      AttendanceMachine.markStopWaitingMissing(list, 'stop-1'); // p2 → missing
+      AttendanceMachine.markPresent(list, 'p3'); // p3 → present
+      final s = AttendanceMachine.stats(list);
+      expect(s['total'], 4);
       expect(s['present'], 2); // p1, p3
       expect(s['missing'], 1); // p2
       expect(s['waiting'], 1); // p4
-      expect(s['absent'],  0);
+      expect(s['absent'], 0);
     });
 
     test('totals are consistent', () {
-      final list = [
-        MockAttendance(passengerId: 'p1', stopOrder: 1,
-            state: AttendanceState.present),
-        MockAttendance(passengerId: 'p2', stopOrder: 1,
-            state: AttendanceState.missing),
-        MockAttendance(passengerId: 'p3', stopOrder: 2,
-            state: AttendanceState.absent),
-        MockAttendance(passengerId: 'p4', stopOrder: 2),
-      ];
-      final s = stats(list);
+      final s = AttendanceMachine.stats([
+        entry('p1', state: AttendanceState.present),
+        entry('p2', state: AttendanceState.missing),
+        entry('p3', stopOrder: 2, state: AttendanceState.absent),
+        entry('p4', stopOrder: 2),
+      ]);
       expect(
         s['present']! + s['missing']! + s['absent']! + s['waiting']!,
         s['total'],
@@ -242,22 +224,48 @@ void main() {
     });
   });
 
-  // ─── Sort order ───────────────────────────────────────────────────────────────
-  group('Passenger list sort order', () {
-    test('current stop passengers appear first', () {
+  // ─── List ordering ────────────────────────────────────────────────────────────
+  group('sortByCurrentStop', () {
+    test('current stop passengers appear first, then stop order', () {
       final list = [
-        MockAttendance(passengerId: 'p_future', stopOrder: 3),
-        MockAttendance(passengerId: 'p_past',   stopOrder: 1,
-            state: AttendanceState.missing),
-        MockAttendance(passengerId: 'p_current', stopOrder: 2),
+        entry('future', stopOrder: 3),
+        entry('past', stopOrder: 1, state: AttendanceState.missing),
+        entry('currentB', stopOrder: 2),
+        entry('currentA', stopOrder: 2),
       ];
-      const currentStop = 2;
-      list.sort((a, b) {
-        if (a.stopOrder == currentStop && b.stopOrder != currentStop) return -1;
-        if (a.stopOrder != currentStop && b.stopOrder == currentStop) return 1;
-        return a.stopOrder.compareTo(b.stopOrder);
-      });
-      expect(list.first.passengerId, 'p_current');
+      AttendanceMachine.sortByCurrentStop(list, 2);
+      // Dart's sort is not stable, so only assert the current-stop pair
+      // occupies the first two slots, then the rest in stop order.
+      expect({list[0].id, list[1].id}, {'currentA', 'currentB'});
+      expect(list[2].id, 'past');
+      expect(list[3].id, 'future');
+    });
+
+    test('without a current-stop match, plain stop order wins', () {
+      final list = [
+        entry('c', stopOrder: 3),
+        entry('a', stopOrder: 1),
+        entry('b', stopOrder: 2),
+      ];
+      AttendanceMachine.sortByCurrentStop(list, 99);
+      expect(list.map((e) => e.id).toList(), ['a', 'b', 'c']);
+    });
+  });
+
+  // ─── DB state parsing ─────────────────────────────────────────────────────────
+  group('AttendanceStateX.fromName', () {
+    test('parses all known state names', () {
+      expect(AttendanceStateX.fromName('waiting'),
+          AttendanceState.waiting);
+      expect(AttendanceStateX.fromName('present'),
+          AttendanceState.present);
+      expect(AttendanceStateX.fromName('missing'),
+          AttendanceState.missing);
+      expect(AttendanceStateX.fromName('absent'), AttendanceState.absent);
+    });
+
+    test('unknown values fall back to waiting', () {
+      expect(AttendanceStateX.fromName('bogus'), AttendanceState.waiting);
     });
   });
 }

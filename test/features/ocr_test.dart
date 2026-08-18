@@ -1,27 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 
-// VIT Bhopal reg number: 2 digits (year) + 3 letters (branch) + 5 digits
-final _regPattern = RegExp(r'\b\d{2}[A-Z]{3}\d{5}\b');
-
-String? extractRegNumber(String rawText) =>
-    _regPattern.firstMatch(rawText.toUpperCase())?.group(0);
+import 'package:vbusf/core/utils/registration_utils.dart';
 
 void main() {
   // ─── Pattern matching ─────────────────────────────────────────────────────────
   group('Registration number pattern', () {
     test('matches valid VIT reg numbers', () {
-      expect(_regPattern.hasMatch('23BCE11351'), isTrue);
-      expect(_regPattern.hasMatch('21BCE10463'), isTrue);
-      expect(_regPattern.hasMatch('22MCA10001'), isTrue);
-      expect(_regPattern.hasMatch('20BTECH0001'), isFalse); // 5-letter branch
+      expect(regNumberPattern.hasMatch('23BCE11351'), isTrue);
+      expect(regNumberPattern.hasMatch('21BCE10463'), isTrue);
+      expect(regNumberPattern.hasMatch('22MCA10001'), isTrue);
+      expect(regNumberPattern.hasMatch('20BTECH0001'), isFalse); // 5-letter branch
     });
 
     test('rejects malformed numbers', () {
-      expect(_regPattern.hasMatch('BCE11351'),   isFalse); // missing year
-      expect(_regPattern.hasMatch('23BC11351'),  isFalse); // 2-letter branch
-      expect(_regPattern.hasMatch('23BCE1135'),  isFalse); // 4-digit suffix
-      expect(_regPattern.hasMatch('2BCE11351'),  isFalse); // 1-digit year
-      expect(_regPattern.hasMatch('23bce11351'), isFalse); // lowercase (raw)
+      expect(regNumberPattern.hasMatch('BCE11351'),   isFalse); // missing year
+      expect(regNumberPattern.hasMatch('23BC11351'),  isFalse); // 2-letter branch
+      expect(regNumberPattern.hasMatch('23BCE1135'),  isFalse); // 4-digit suffix
+      expect(regNumberPattern.hasMatch('2BCE11351'),  isFalse); // 1-digit year
+      expect(regNumberPattern.hasMatch('23bce11351'), isFalse); // lowercase (raw)
     });
 
     test('case-insensitive via toUpperCase()', () {
@@ -65,7 +61,7 @@ void main() {
     final branches = ['BCE', 'MCA', 'MBA', 'BME', 'BCS', 'BEE', 'BCE', 'BIT'];
     for (final branch in branches) {
       test('matches $branch branch', () {
-        expect(_regPattern.hasMatch('23${branch}10001'), isTrue);
+        expect(regNumberPattern.hasMatch('23${branch}10001'), isTrue);
       });
     }
   });
