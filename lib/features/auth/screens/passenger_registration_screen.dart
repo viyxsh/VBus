@@ -327,7 +327,7 @@ class _PassengerRegistrationScreenState
 
   Widget _buildCityDropdown(ThemeData theme) {
     return DropdownButtonFormField<Map<String, dynamic>>(
-      value: _selectedCity,
+      initialValue: _selectedCity,
       decoration: _inputDecoration(label: 'City', icon: Icons.location_city_outlined),
       hint: const Text('Select city'),
       items: _cities
@@ -346,7 +346,7 @@ class _PassengerRegistrationScreenState
 
   Widget _buildBusDropdown(ThemeData theme) {
     return DropdownButtonFormField<Map<String, dynamic>>(
-      value: _selectedBus,
+      initialValue: _selectedBus,
       decoration: _inputDecoration(
         label: 'Bus Number',
         icon: Icons.directions_bus_outlined,
@@ -376,7 +376,7 @@ class _PassengerRegistrationScreenState
 
   Widget _buildStopDropdown(ThemeData theme) {
     return DropdownButtonFormField<Map<String, dynamic>>(
-      value: _selectedStop,
+      initialValue: _selectedStop,
       decoration: _inputDecoration(
         label: 'Boarding Stop',
         icon: Icons.place_outlined,
@@ -501,7 +501,7 @@ class _PassengerRegistrationScreenState
           ),
           Switch(
             value: _devBypass,
-            activeColor: Colors.orange,
+            activeThumbColor: Colors.orange,
             onChanged: (v) => setState(() {
               _devBypass = v;
               if (v) _receiptFile = null;

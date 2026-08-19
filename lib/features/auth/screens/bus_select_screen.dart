@@ -459,7 +459,7 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
   }) {
     return DropdownButtonFormField<Map<String, dynamic>>(
       isExpanded: true,
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
