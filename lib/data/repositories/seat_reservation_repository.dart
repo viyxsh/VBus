@@ -89,8 +89,9 @@ class SeatReservationRepository {
     final data = await supabase
         .from(SupabaseConstants.seatReservations)
         .select(
-            'id, bus_id, passenger_id, seat_number, status, requested_at, '
-            'passengers(name, institute_id, user_type)')
+          'id, bus_id, passenger_id, seat_number, status, requested_at, '
+          'passengers(name, institute_id, user_type)',
+        )
         .eq('bus_id', busId)
         .eq('status', 'pending')
         .order('requested_at', ascending: false);
@@ -104,8 +105,9 @@ class SeatReservationRepository {
     final data = await supabase
         .from(SupabaseConstants.seatReservations)
         .select(
-            'id, bus_id, passenger_id, seat_number, status, requested_at, '
-            'passengers(name, institute_id, user_type)')
+          'id, bus_id, passenger_id, seat_number, status, requested_at, '
+          'passengers(name, institute_id, user_type)',
+        )
         .eq('bus_id', busId)
         .eq('status', 'approved')
         .order('requested_at', ascending: false);
@@ -114,33 +116,32 @@ class SeatReservationRepository {
         .toList();
   }
 
-  Future<void> approveReservation(
-      String reservationId, String conductorId) async {
+  /// The responding conductor is derived server-side from the auth session.
+  Future<void> approveReservation(String reservationId) async {
     if (AppConfig.demoMode) return;
-    await supabase.rpc('approve_seat_reservation', params: {
-      'p_reservation_id': reservationId,
-      'p_responded_by': conductorId,
-    });
+    await supabase.rpc(
+      'approve_seat_reservation',
+      params: {'p_reservation_id': reservationId},
+    );
   }
 
   Future<void> rejectReservation({
     required String reservationId,
-    required String conductorId,
     String? reason,
   }) async {
     if (AppConfig.demoMode) return;
-    await supabase.rpc('reject_seat_reservation', params: {
-      'p_reservation_id': reservationId,
-      'p_responded_by': conductorId,
-      'p_reason': reason,
-    });
+    await supabase.rpc(
+      'reject_seat_reservation',
+      params: {'p_reservation_id': reservationId, 'p_reason': reason},
+    );
   }
 
   /// Remove an active reservation (conductor force-removal or unreserve).
   Future<void> removeReservation(String reservationId) async {
     if (AppConfig.demoMode) return;
-    await supabase.rpc('remove_seat_reservation', params: {
-      'p_reservation_id': reservationId,
-    });
+    await supabase.rpc(
+      'remove_seat_reservation',
+      params: {'p_reservation_id': reservationId},
+    );
   }
 }

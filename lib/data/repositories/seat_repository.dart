@@ -24,8 +24,14 @@ class SeatRepository {
   // students take red ones. Names show when a taken seat is tapped.
   static const _demoFacultyNames = ['Dr. Mehta', 'Prof. Iyer'];
   static const _demoStudentNames = [
-    'Aarav S.', 'Diya P.', 'Kabir R.', 'Ananya V.', 'Rohan M.',
-    'Isha K.', 'Vihaan T.', 'Sara N.',
+    'Aarav S.',
+    'Diya P.',
+    'Kabir R.',
+    'Ananya V.',
+    'Rohan M.',
+    'Isha K.',
+    'Vihaan T.',
+    'Sara N.',
   ];
 
   /// The passenger's bus, user type and seat layout.
@@ -41,16 +47,20 @@ class SeatRepository {
         .eq('id', userId)
         .single();
     final bus = profile['buses'] as Map;
-    debugPrint('[SEAT_REPO] seatBusInfo: '
-        'bus_id=${profile['bus_id']} '
-        'facultyRowsLeft=${bus['faculty_reserved_rows_left']} '
-        'facultyRowsRight=${bus['faculty_reserved_rows_right']}');
+    debugPrint(
+      '[SEAT_REPO] seatBusInfo: '
+      'bus_id=${profile['bus_id']} '
+      'facultyRowsLeft=${bus['faculty_reserved_rows_left']} '
+      'facultyRowsRight=${bus['faculty_reserved_rows_right']}',
+    );
     return Map<String, dynamic>.from(profile);
   }
 
   /// All seat bookings on a bus for a given date, with booker names.
   Future<List<Map<String, dynamic>>> bookingsForDate(
-      String busId, String dateStr) async {
+    String busId,
+    String dateStr,
+  ) async {
     if (AppConfig.demoMode) return _demoBookings(busId, dateStr);
     final data = await supabase
         .from(SupabaseConstants.seatBookings)
@@ -62,21 +72,29 @@ class SeatRepository {
 
   /// Builds the demo's prefilled "taken" seats plus the visitor's own booking.
   Future<List<Map<String, dynamic>>> _demoBookings(
-      String busId, String dateStr) async {
+    String busId,
+    String dateStr,
+  ) async {
     final bus = await supabase
         .from(SupabaseConstants.buses)
-        .select('left_seats, student_seats, '
-            'faculty_reserved_rows_left, faculty_reserved_rows_right')
+        .select(
+          'left_seats, student_seats, '
+          'faculty_reserved_rows_left, faculty_reserved_rows_right',
+        )
         .eq('id', busId)
         .single();
 
     final leftSeats = (bus['left_seats'] as num).toInt();
     final studentSeats = (bus['student_seats'] as num).toInt();
     // Mirror seatBusInfo's demo guarantee of at least one faculty row each side.
-    final facultyRowsLeft =
-        max(1, ((bus['faculty_reserved_rows_left'] as num?) ?? 0).toInt());
-    final facultyRowsRight =
-        max(1, ((bus['faculty_reserved_rows_right'] as num?) ?? 0).toInt());
+    final facultyRowsLeft = max(
+      1,
+      ((bus['faculty_reserved_rows_left'] as num?) ?? 0).toInt(),
+    );
+    final facultyRowsRight = max(
+      1,
+      ((bus['faculty_reserved_rows_right'] as num?) ?? 0).toInt(),
+    );
 
     // Reconstruct the same seat-number zones the screen lays out.
     final facultyLeftSeats = facultyRowsLeft * 2;
@@ -106,7 +124,11 @@ class SeatRepository {
     final result = <Map<String, dynamic>>[];
 
     // A couple of faculty seats taken.
-    for (int i = 0; i < _demoFacultyNames.length && i < facultyNumbers.length; i++) {
+    for (
+      int i = 0;
+      i < _demoFacultyNames.length && i < facultyNumbers.length;
+      i++
+    ) {
       result.add({
         'seat_number': facultyNumbers[i],
         'passenger_id': 'demo-faculty-$i',
@@ -116,9 +138,11 @@ class SeatRepository {
 
     // A spread of student seats taken (every 3rd seat).
     var nameIdx = 0;
-    for (int j = 0;
-        j < studentNumbers.length && nameIdx < _demoStudentNames.length;
-        j += 3) {
+    for (
+      int j = 0;
+      j < studentNumbers.length && nameIdx < _demoStudentNames.length;
+      j += 3
+    ) {
       result.add({
         'seat_number': studentNumbers[j],
         'passenger_id': 'demo-student-$nameIdx',
@@ -155,8 +179,9 @@ class SeatRepository {
         .eq('booking_date', dateStr);
   }
 
-  /// Books a seat for the current passenger. Throws a PostgrestException with
-  /// code 23505 if the seat was taken concurrently.
+  /// Books a seat for the signed-in passenger (derived server-side from the
+  /// auth session). Throws a PostgrestException with code 23505 if the seat
+  /// was taken concurrently.
   Future<void> bookSeat({
     required String busId,
     required int seatNumber,
@@ -166,13 +191,14 @@ class SeatRepository {
       _demoMyBooking[dateStr] = seatNumber; // persists for the session
       return;
     }
-    final userId = supabase.auth.currentUser!.id;
-    await supabase.rpc('book_seat', params: {
-      'p_bus_id': busId,
-      'p_passenger_id': userId,
-      'p_seat_number': seatNumber,
-      'p_booking_date': dateStr,
-    });
+    await supabase.rpc(
+      'book_seat',
+      params: {
+        'p_bus_id': busId,
+        'p_seat_number': seatNumber,
+        'p_booking_date': dateStr,
+      },
+    );
   }
 
   String get currentUserId => supabase.auth.currentUser!.id;

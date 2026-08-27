@@ -12,8 +12,7 @@ part 'bus_request_repository.g.dart';
 BusRequestRepository busRequestRepository(Ref ref) => BusRequestRepository();
 
 class BusRequestRepository {
-  Future<List<Map<String, dynamic>>> pendingRequestsForBus(
-      String busId) async {
+  Future<List<Map<String, dynamic>>> pendingRequestsForBus(String busId) async {
     final data = await supabase
         .from(SupabaseConstants.busRequests)
         .select('''
@@ -102,27 +101,26 @@ class BusRequestRepository {
     });
   }
 
-  Future<void> approveRequest(String requestId, String conductorId) async {
+  /// The responding conductor is derived server-side from the auth session.
+  Future<void> approveRequest(String requestId) async {
     if (AppConfig.demoMode) return;
 
-    await supabase.rpc('approve_bus_request', params: {
-      'p_request_id': requestId,
-      'p_responded_by': conductorId,
-    });
+    await supabase.rpc(
+      'approve_bus_request',
+      params: {'p_request_id': requestId},
+    );
   }
 
   Future<void> rejectRequest({
     required String requestId,
-    required String conductorId,
     String? reason,
   }) async {
     if (AppConfig.demoMode) return;
 
-    await supabase.rpc('reject_bus_request', params: {
-      'p_request_id': requestId,
-      'p_responded_by': conductorId,
-      'p_reason': reason,
-    });
+    await supabase.rpc(
+      'reject_bus_request',
+      params: {'p_request_id': requestId, 'p_reason': reason},
+    );
   }
 
   RealtimeChannel subscribeToBusRequests(
