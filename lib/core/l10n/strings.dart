@@ -24,7 +24,8 @@ const _hi = {
   'Username': 'उपयोगकर्ता नाम',
   'Password': 'पासवर्ड',
   'Sign in with Google': 'Google से साइन इन करें',
-  'Use your @vitbhopal.ac.in account': 'अपने @vitbhopal.ac.in खाते का उपयोग करें',
+  'Use your @vitbhopal.ac.in account':
+      'अपने @vitbhopal.ac.in खाते का उपयोग करें',
 
   // Settings / Profile
   'Settings': 'सेटिंग्स',
@@ -39,11 +40,14 @@ const _hi = {
   'Custom Stop Pins': 'कस्टम स्टॉप पिन',
   'Manage your saved map pins': 'अपने सहेजे गए मानचित्र पिन प्रबंधित करें',
   'Seat Booking Reminder': 'सीट बुकिंग अनुस्मारक',
-  'Remind me before the 8 PM booking window opens': 'रात 8 बजे की बुकिंग विंडो खुलने से पहले याद दिलाएं',
+  'Remind me before the 8 PM booking window opens':
+      'रात 8 बजे की बुकिंग विंडो खुलने से पहले याद दिलाएं',
   'Custom Pin Alerts': 'कस्टम पिन अलर्ट',
-  'Alert me when the bus nears my saved map pins': 'बस मेरे सहेजे गए पिन के पास आने पर सूचित करें',
+  'Alert me when the bus nears my saved map pins':
+      'बस मेरे सहेजे गए पिन के पास आने पर सूचित करें',
   'Bus Arrival Alert': 'बस आगमन अलर्ट',
-  'Notify me when the bus arrives at my stop': 'जब बस मेरे स्टॉप पर पहुंचे तो मुझे सूचित करें',
+  'Notify me when the bus arrives at my stop':
+      'जब बस मेरे स्टॉप पर पहुंचे तो मुझे सूचित करें',
   'Appearance': 'स्वरूप',
   'Dark': 'डार्क',
   'Light': 'लाइट',
@@ -55,7 +59,8 @@ const _hi = {
   'Manage Passengers': 'यात्री प्रबंधन',
   'Add or remove passengers from bus': 'बस से यात्री जोड़ें या हटाएं',
   'Trip and attendance reminders': 'यात्रा और उपस्थिति अनुस्मारक',
-  'Trip start reminders and attendance alerts': 'यात्रा प्रारंभ और उपस्थिति अलर्ट',
+  'Trip start reminders and attendance alerts':
+      'यात्रा प्रारंभ और उपस्थिति अलर्ट',
   'Manage your saved pins': 'अपने सहेजे गए पिन प्रबंधित करें',
   'Dark Mode': 'डार्क मोड',
   'Currently using dark theme': 'वर्तमान में डार्क थीम उपयोग में है',
@@ -63,7 +68,8 @@ const _hi = {
 
   // Attendance
   'No Active Trip': 'कोई एक्टिव ट्रिप नहीं',
-  'Start a trip to begin taking attendance': 'अटेंडेंस लेने के लिए ट्रिप शुरू करें',
+  'Start a trip to begin taking attendance':
+      'अटेंडेंस लेने के लिए ट्रिप शुरू करें',
   'Start Trip': 'ट्रिप शुरू करें',
   'End Trip': 'ट्रिप खत्म करें',
   'Trip Ended': 'ट्रिप खत्म',
@@ -83,7 +89,8 @@ const _hi = {
   'No results': 'कोई रिजल्ट नहीं',
   'Name': 'नाम',
   'Stop': 'स्टॉप',
-  'GPS signal lost — auto-advance paused.': 'GPS सिग्नल खो गया — ऑटो-एडवांस रुका।',
+  'GPS signal lost — auto-advance paused.':
+      'GPS सिग्नल खो गया — ऑटो-एडवांस रुका।',
   'GPS lost — auto-advance paused.': 'GPS खो गया — ऑटो-एडवांस रुका।',
   'Next Stop →': 'अगला स्टॉप →',
 
@@ -157,6 +164,9 @@ const _hi = {
   'Permanent seat requests from faculty': 'फैकल्टी से स्थायी सीट अनुरोध',
   'Remove passengers from bus': 'बस से यात्री हटाएं',
   'Failed to load': 'लोड नहीं हुआ',
+  'Could not verify your session': 'आपका सेशन सत्यापित नहीं हो सका',
+  'Check your connection and try again.':
+      'अपना कनेक्शन जांचें और फिर से कोशिश करें।',
   'Failed to save profile': 'प्रोफ़ाइल सहेजी नहीं गई',
   'Failed to save bus controls': 'बस नियंत्रण सहेजे नहीं गए',
   'Failed to remove passenger': 'यात्री नहीं हटाया गया',

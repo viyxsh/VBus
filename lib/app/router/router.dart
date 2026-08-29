@@ -21,8 +21,7 @@ part 'router.g.dart';
 // ─── Transition helpers ───────────────────────────────────────────────────────
 
 // Fade — used for auth flow screens
-CustomTransitionPage<void> _fadePage(
-    GoRouterState state, Widget child) =>
+CustomTransitionPage<void> _fadePage(GoRouterState state, Widget child) =>
     CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
@@ -35,8 +34,7 @@ CustomTransitionPage<void> _fadePage(
     );
 
 // Fade + scale up — used for the main home screens after login
-CustomTransitionPage<void> _fadeScalePage(
-    GoRouterState state, Widget child) =>
+CustomTransitionPage<void> _fadeScalePage(GoRouterState state, Widget child) =>
     CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
@@ -44,7 +42,9 @@ CustomTransitionPage<void> _fadeScalePage(
       reverseTransitionDuration: const Duration(milliseconds: 250),
       transitionsBuilder: (_, animation, __, child) {
         final curved = CurvedAnimation(
-            parent: animation, curve: Curves.easeOutCubic);
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
@@ -56,8 +56,7 @@ CustomTransitionPage<void> _fadeScalePage(
     );
 
 // Slide from right + fade — used for detail / push screens (chat)
-CustomTransitionPage<void> _slidePage(
-    GoRouterState state, Widget child) =>
+CustomTransitionPage<void> _slidePage(GoRouterState state, Widget child) =>
     CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
@@ -65,9 +64,13 @@ CustomTransitionPage<void> _slidePage(
       reverseTransitionDuration: const Duration(milliseconds: 250),
       transitionsBuilder: (_, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
-            parent: animation, curve: Curves.easeOutCubic);
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
         final secondary = CurvedAnimation(
-            parent: secondaryAnimation, curve: Curves.easeInCubic);
+          parent: secondaryAnimation,
+          curve: Curves.easeInCubic,
+        );
         return SlideTransition(
           position: Tween<Offset>(
             begin: const Offset(1.0, 0),
@@ -100,8 +103,7 @@ GoRouter router(Ref ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        pageBuilder: (_, state) =>
-            _fadePage(state, const SplashScreen()),
+        pageBuilder: (_, state) => _fadePage(state, const SplashScreen()),
       ),
       GoRoute(
         path: '/role-select',
@@ -120,8 +122,7 @@ GoRouter router(Ref ref) {
       ),
       GoRoute(
         path: '/auth/bus-select',
-        pageBuilder: (_, state) =>
-            _fadePage(state, const BusSelectScreen()),
+        pageBuilder: (_, state) => _fadePage(state, const BusSelectScreen()),
       ),
 
       // Conductor
@@ -147,13 +148,13 @@ GoRouter router(Ref ref) {
           final bool isBroadcast;
           final String? phone;
           if (extra is Map<String, dynamic>) {
-            title       = extra['title']       as String? ?? 'Chat';
-            isBroadcast = extra['isBroadcast'] as bool?   ?? true;
-            phone       = extra['phone']       as String?;
+            title = extra['title'] as String? ?? 'Chat';
+            isBroadcast = extra['isBroadcast'] as bool? ?? true;
+            phone = extra['phone'] as String?;
           } else {
-            title       = extra as String?     ?? 'Chat';
+            title = extra as String? ?? 'Chat';
             isBroadcast = true;
-            phone       = null;
+            phone = null;
           }
           return _slidePage(
             state,
@@ -189,8 +190,12 @@ class _RouterNotifier extends ChangeNotifier {
     final path = state.uri.path;
 
     return authAsync.when(
-      loading: () => null,
-      error: (_, __) => '/role-select',
+      // Stay on splash while auth resolves — deep links must not render
+      // protected content before the session is known.
+      loading: () => path == '/splash' ? null : '/splash',
+      // Session verification failed → splash shows the error/retry UI
+      // instead of silently bouncing a signed-in user to role selection.
+      error: (_, __) => path == '/splash' ? null : '/splash',
       data: (AuthUser? user) => _getRedirect(user, path),
     );
   }
@@ -205,7 +210,9 @@ class _RouterNotifier extends ChangeNotifier {
 
     switch (user.role) {
       case UserRole.conductor:
-        if (path.startsWith('/conductor') || path.startsWith('/chat')) return null;
+        if (path.startsWith('/conductor') || path.startsWith('/chat')) {
+          return null;
+        }
         return '/conductor/home';
 
       case UserRole.admin:
@@ -220,8 +227,7 @@ class _RouterNotifier extends ChangeNotifier {
         }
         if (user.approvalStatus == ApprovalStatus.pending ||
             user.approvalStatus == ApprovalStatus.rejected) {
-          if (path == '/auth/pending-approval' ||
-              path == '/auth/bus-select') {
+          if (path == '/auth/pending-approval' || path == '/auth/bus-select') {
             return null;
           }
           return '/auth/pending-approval';
@@ -233,7 +239,9 @@ class _RouterNotifier extends ChangeNotifier {
           }
           return '/auth/bus-select';
         }
-        if (path.startsWith('/passenger') || path.startsWith('/chat')) return null;
+        if (path.startsWith('/passenger') || path.startsWith('/chat')) {
+          return null;
+        }
         return '/passenger/home';
     }
   }

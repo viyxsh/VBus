@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 
-class SplashScreen extends StatefulWidget {
+import '../../../core/l10n/strings.dart';
+import '../providers/auth_provider.dart';
+
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   bool _navigated = false;
   late final AnimationController _controller;
@@ -43,8 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
       fit: BoxFit.contain,
       onLoaded: (composition) {
         // Divide duration by speed so the full animation completes faster
-        _controller.duration =
-            composition.duration * (1.0 / _speed);
+        _controller.duration = composition.duration * (1.0 / _speed);
         _controller.forward().whenComplete(_navigate);
       },
       errorBuilder: (_, __, ___) {
@@ -63,7 +66,9 @@ class _SplashScreenState extends State<SplashScreen>
                 width: 52,
                 height: 52,
                 colorFilter: const ColorFilter.mode(
-                    Colors.white, BlendMode.srcIn),
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),
@@ -72,41 +77,87 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
+  /// Session verification failed (e.g. network error while fetching the
+  /// profile). Offer a retry instead of silently bouncing to role selection.
+  Widget _buildError(BuildContext context, ThemeData theme, Object error) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 56,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            S.t(context, 'Could not verify your session'),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            S.t(context, 'Check your connection and try again.'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () {
+              _navigated = false;
+              _controller.reset();
+              ref.invalidate(authStateProvider);
+            },
+            icon: const Icon(Icons.refresh),
+            label: Text(S.t(context, 'Retry')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _splashBody(ThemeData theme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(width: 220, height: 220, child: _buildAnimation(theme)),
+        const SizedBox(height: 16),
+        Text(
+          'VBUS',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 2,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          S.t(context, 'VIT Bhopal University Transport'),
+          style: TextStyle(
+            fontSize: 13,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final authAsync = ref.watch(authStateProvider);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D0E18) : Colors.white,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 220,
-              height: 220,
-              child: _buildAnimation(theme),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'VBUS',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'VIT Bhopal University Transport',
-              style: TextStyle(
-                fontSize: 13,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+        child: authAsync.when(
+          loading: () => _splashBody(theme),
+          error: (e, _) => _buildError(context, theme, e),
+          data: (_) => _splashBody(theme),
         ),
       ),
     );
