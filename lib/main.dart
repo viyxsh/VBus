@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,9 +16,15 @@ void main() async {
 
   // Attach a root listener immediately so the logging package never queues
   // records without a handler (prevents "too many loggers" warnings from
-  // supabase_flutter / realtime-dart internals).
-  Logger.root.level = Level.WARNING;
-  Logger.root.onRecord.listen((_) {});
+  // supabase_flutter / realtime-dart internals). WARNING+ records are
+  // surfaced instead of being dropped on the floor.
+  Logger.root.level = kDebugMode ? Level.INFO : Level.WARNING;
+  Logger.root.onRecord.listen((rec) {
+    debugPrint('[${rec.level.name}] ${rec.loggerName}: ${rec.message}');
+    if (rec.error != null) {
+      debugPrint('  └─ error: ${rec.error}');
+    }
+  });
 
   assert(
     AppConfig.supabaseUrl.isNotEmpty,
