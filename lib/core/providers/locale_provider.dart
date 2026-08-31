@@ -28,5 +28,6 @@ class LocaleNotifier extends Notifier<Locale> {
   bool get isHindi => state.languageCode == 'hi';
 }
 
-final localeProvider =
-    NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
+final localeProvider = NotifierProvider<LocaleNotifier, Locale>(
+  LocaleNotifier.new,
+);

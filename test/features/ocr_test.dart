@@ -9,15 +9,24 @@ void main() {
       expect(regNumberPattern.hasMatch('23BCE11351'), isTrue);
       expect(regNumberPattern.hasMatch('21BCE10463'), isTrue);
       expect(regNumberPattern.hasMatch('22MCA10001'), isTrue);
-      expect(regNumberPattern.hasMatch('20BTECH0001'), isFalse); // 5-letter branch
+      expect(
+        regNumberPattern.hasMatch('20BTECH0001'),
+        isFalse,
+      ); // 5-letter branch
     });
 
     test('rejects malformed numbers', () {
-      expect(regNumberPattern.hasMatch('BCE11351'),   isFalse); // missing year
-      expect(regNumberPattern.hasMatch('23BC11351'),  isFalse); // 2-letter branch
-      expect(regNumberPattern.hasMatch('23BCE1135'),  isFalse); // 4-digit suffix
-      expect(regNumberPattern.hasMatch('2BCE11351'),  isFalse); // 1-digit year
-      expect(regNumberPattern.hasMatch('23bce11351'), isFalse); // lowercase (raw)
+      expect(regNumberPattern.hasMatch('BCE11351'), isFalse); // missing year
+      expect(
+        regNumberPattern.hasMatch('23BC11351'),
+        isFalse,
+      ); // 2-letter branch
+      expect(regNumberPattern.hasMatch('23BCE1135'), isFalse); // 4-digit suffix
+      expect(regNumberPattern.hasMatch('2BCE11351'), isFalse); // 1-digit year
+      expect(
+        regNumberPattern.hasMatch('23bce11351'),
+        isFalse,
+      ); // lowercase (raw)
     });
 
     test('case-insensitive via toUpperCase()', () {
@@ -46,8 +55,8 @@ void main() {
 
     test('returns null when no reg number present', () {
       expect(extractRegNumber('VIT BHOPAL UNIVERSITY'), isNull);
-      expect(extractRegNumber(''),                       isNull);
-      expect(extractRegNumber('Day Scholar'),            isNull);
+      expect(extractRegNumber(''), isNull);
+      expect(extractRegNumber('Day Scholar'), isNull);
     });
 
     test('picks first match when multiple numbers appear', () {

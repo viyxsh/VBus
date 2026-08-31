@@ -20,9 +20,23 @@ class BookingHistorySheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final historyAsync = ref.watch(seatBookingHistoryProvider);
-    const wd = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    String fmt(DateTime d) => '${wd[d.weekday-1]}, ${d.day} ${mo[d.month-1]}';
+    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const mo = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    String fmt(DateTime d) =>
+        '${wd[d.weekday - 1]}, ${d.day} ${mo[d.month - 1]}';
 
     return DraggableScrollableSheet(
       expand: false,
@@ -34,13 +48,17 @@ class BookingHistorySheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
               children: [
-                Text(S.t(context, 'Seat Booking History'),
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  S.t(context, 'Seat Booking History'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
                 IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context)),
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
           ),
@@ -49,22 +67,31 @@ class BookingHistorySheet extends ConsumerWidget {
             child: historyAsync.when(
               loading: () => const Center(child: LottieLoading()),
               error: (e, _) => Center(
-                  child: Text(S.t(context, 'Failed to load'),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant))),
+                child: Text(
+                  S.t(context, 'Failed to load'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
               data: (rows) {
                 if (rows.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.history_rounded,
-                            size: 48,
-                            color: theme.colorScheme.outlineVariant),
+                        Icon(
+                          Icons.history_rounded,
+                          size: 48,
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         const SizedBox(height: 12),
-                        Text('No bookings in the last 7 days',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant)),
+                        Text(
+                          'No bookings in the last 7 days',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -85,8 +112,7 @@ class BookingHistorySheet extends ConsumerWidget {
                     final isToday = _isToday(date);
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor:
-                            theme.colorScheme.primaryContainer,
+                        backgroundColor: theme.colorScheme.primaryContainer,
                         child: Text(
                           label,
                           style: TextStyle(
@@ -99,11 +125,15 @@ class BookingHistorySheet extends ConsumerWidget {
                       title: Text(
                         isToday ? S.t(context, 'Today') : fmt(date),
                         style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      subtitle: Text('Seat $label',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant)),
+                      subtitle: Text(
+                        'Seat $label',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     );
                   },
                 );

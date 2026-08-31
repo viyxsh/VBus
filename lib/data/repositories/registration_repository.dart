@@ -20,8 +20,10 @@ class RegistrationRepository {
   String get currentUserEmail => supabase.auth.currentUser!.email!;
 
   Future<List<Map<String, dynamic>>> cities() async {
-    final data =
-        await supabase.from(SupabaseConstants.cities).select().order('name');
+    final data = await supabase
+        .from(SupabaseConstants.cities)
+        .select()
+        .order('name');
     return List<Map<String, dynamic>>.from(data as List);
   }
 
@@ -48,7 +50,9 @@ class RegistrationRepository {
   Future<String> uploadReceipt(Uint8List bytes) async {
     final userId = supabase.auth.currentUser!.id;
     final storagePath = '$userId/receipt.jpg';
-    await supabase.storage.from(SupabaseConstants.receiptsBucket).uploadBinary(
+    await supabase.storage
+        .from(SupabaseConstants.receiptsBucket)
+        .uploadBinary(
           storagePath,
           bytes,
           fileOptions: const FileOptions(
@@ -113,7 +117,8 @@ class RegistrationRepository {
 
   /// Subscribes to approval-status changes for the current user.
   RealtimeChannel subscribeApproval(
-      void Function(Map<String, dynamic> row) onUpdate) {
+    void Function(Map<String, dynamic> row) onUpdate,
+  ) {
     final userId = supabase.auth.currentUser!.id;
     return supabase
         .channel('passenger_approval_$userId')
@@ -135,10 +140,13 @@ class RegistrationRepository {
   Future<void> resubmitReceipt(Uint8List bytes) async {
     final userId = supabase.auth.currentUser!.id;
     final storagePath = await uploadReceipt(bytes);
-    await supabase.from(SupabaseConstants.passengers).update({
-      'receipt_url': storagePath,
-      'approval_status': 'pending',
-      'rejection_reason': null,
-    }).eq('id', userId);
+    await supabase
+        .from(SupabaseConstants.passengers)
+        .update({
+          'receipt_url': storagePath,
+          'approval_status': 'pending',
+          'rejection_reason': null,
+        })
+        .eq('id', userId);
   }
 }

@@ -27,7 +27,8 @@ class PassengerRepository {
     final data = await supabase
         .from(SupabaseConstants.passengers)
         .select(
-            'name, email, phone, user_type, institute_id, bus_id, stop_id, buses(bus_number)')
+          'name, email, phone, user_type, institute_id, bus_id, stop_id, buses(bus_number)',
+        )
         .eq('id', userId)
         .single();
     return Map<String, dynamic>.from(data);
@@ -40,11 +41,14 @@ class PassengerRepository {
   }) async {
     if (AppConfig.demoMode) return; // live prototype: don't persist edits
     final userId = supabase.auth.currentUser!.id;
-    await supabase.from(SupabaseConstants.passengers).update({
-      'name': name,
-      'phone': phone,
-      if (stopId != null) 'stop_id': stopId,
-    }).eq('id', userId);
+    await supabase
+        .from(SupabaseConstants.passengers)
+        .update({
+          'name': name,
+          'phone': phone,
+          if (stopId != null) 'stop_id': stopId,
+        })
+        .eq('id', userId);
   }
 
   /// The stops on a bus's route, ordered by stop order.
@@ -170,13 +174,16 @@ class PassengerRepository {
       'request_type': 'leave',
     });
 
-    await supabase.from(SupabaseConstants.seatBookings).delete().eq(
-      'passenger_id', userId,
-    ).gte('booking_date', DateTime.now().toIso8601String().substring(0, 10));
+    await supabase
+        .from(SupabaseConstants.seatBookings)
+        .delete()
+        .eq('passenger_id', userId)
+        .gte('booking_date', DateTime.now().toIso8601String().substring(0, 10));
 
-    await supabase.from(SupabaseConstants.passengers).update({
-      'bus_id': null,
-    }).eq('id', userId);
+    await supabase
+        .from(SupabaseConstants.passengers)
+        .update({'bus_id': null})
+        .eq('id', userId);
   }
 
   /// The passenger's seat bookings over the last 7 days, with the seat layout

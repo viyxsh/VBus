@@ -10,7 +10,7 @@ import '../../data/repositories/user_repository.dart';
 class BusRequestNotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  static const _channelId   = 'bus_requests';
+  static const _channelId = 'bus_requests';
   static const _channelName = 'Bus Requests';
 
   static RealtimeChannel? _channel;
@@ -43,8 +43,9 @@ class BusRequestNotificationService {
             if (record['status'] != 'pending') return;
 
             final storage = FlutterSecureStorage();
-            final notifEnabled =
-                await storage.read(key: 'conductor_notifications');
+            final notifEnabled = await storage.read(
+              key: 'conductor_notifications',
+            );
             if (notifEnabled == 'false') return;
 
             await _show(
@@ -68,7 +69,8 @@ class BusRequestNotificationService {
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      _channelId, _channelName,
+      _channelId,
+      _channelName,
       channelDescription: 'Bus join request alerts',
       importance: Importance.high,
       priority: Priority.high,

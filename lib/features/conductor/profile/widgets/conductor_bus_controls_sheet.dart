@@ -52,7 +52,9 @@ class _ConductorBusControlsSheetState
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await ref.read(busRepositoryProvider).updateFacultyRows(
+      await ref
+          .read(busRepositoryProvider)
+          .updateFacultyRows(
             busId: _busId,
             reservedRowsLeft: _rowsLeft,
             reservedRowsRight: _rowsRight,
@@ -62,10 +64,12 @@ class _ConductorBusControlsSheetState
     } catch (e) {
       debugPrint('[BUS_CTRL] Save FAILED: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Failed to save bus controls'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to save bus controls'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -77,7 +81,11 @@ class _ConductorBusControlsSheetState
     final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+        20,
+        20,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -86,8 +94,9 @@ class _ConductorBusControlsSheetState
           const SizedBox(height: 8),
           Text(
             'Set how many rows from the top of each side are reserved for faculty (yellow seats).',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 24),
           if (_loading)
@@ -96,29 +105,45 @@ class _ConductorBusControlsSheetState
               child: Center(child: CircularProgressIndicator()),
             )
           else ...[
-            _rowStepper(theme, 'Left side reserved rows',
-                'Faculty rows on left column', _rowsLeft, _totalLeftRows,
-                (v) => setState(() => _rowsLeft = v)),
+            _rowStepper(
+              theme,
+              'Left side reserved rows',
+              'Faculty rows on left column',
+              _rowsLeft,
+              _totalLeftRows,
+              (v) => setState(() => _rowsLeft = v),
+            ),
             const SizedBox(height: 16),
-            _rowStepper(theme, 'Right side reserved rows',
-                'Faculty rows on right column', _rowsRight, _totalRightRows,
-                (v) => setState(() => _rowsRight = v)),
+            _rowStepper(
+              theme,
+              'Right side reserved rows',
+              'Faculty rows on right column',
+              _rowsRight,
+              _totalRightRows,
+              (v) => setState(() => _rowsRight = v),
+            ),
             const SizedBox(height: 28),
             FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: _saving
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : Text(S.t(context, 'Save'),
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      S.t(context, 'Save'),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
             ),
           ],
         ],
@@ -126,20 +151,32 @@ class _ConductorBusControlsSheetState
     );
   }
 
-  Widget _rowStepper(ThemeData theme, String label, String sub,
-      int value, int max, ValueChanged<int> onChange) {
+  Widget _rowStepper(
+    ThemeData theme,
+    String label,
+    String sub,
+    int value,
+    int max,
+    ValueChanged<int> onChange,
+  ) {
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              Text(sub,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant)),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                sub,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
@@ -149,10 +186,13 @@ class _ConductorBusControlsSheetState
         ),
         SizedBox(
           width: 36,
-          child: Text('$value',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          child: Text(
+            '$value',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
         IconButton(
           icon: const Icon(Icons.add_circle_outline),

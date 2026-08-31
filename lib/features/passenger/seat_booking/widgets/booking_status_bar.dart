@@ -71,8 +71,10 @@ class _BookingStatusBarState extends State<BookingStatusBar> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
         children: [
-          Text(message,
-              style: theme.textTheme.bodySmall?.copyWith(color: color)),
+          Text(
+            message,
+            style: theme.textTheme.bodySmall?.copyWith(color: color),
+          ),
           if (widget.showLegend) ...[
             const SizedBox(height: 10),
             widget.buildLegend(),

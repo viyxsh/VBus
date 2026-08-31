@@ -56,15 +56,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('VBUS',
+                  Text(
+                    'VBUS',
                     style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800, letterSpacing: 1.5),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
-                  Text('VIT Bhopal University Transport',
+                  Text(
+                    'VIT Bhopal University Transport',
                     style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant),
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -85,9 +90,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Widget _buildSectionLabel(ThemeData theme, String label) {
     return Text(
       label,
-      style: theme.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
+      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 
@@ -183,7 +186,7 @@ class _RoleCard extends StatelessWidget {
                     color: primary.withValues(alpha: 0.18),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -238,10 +241,9 @@ class _ConductorLoginSectionState
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
-      await ref.read(authRepositoryProvider).signInConductor(
-            _usernameController.text,
-            _passwordController.text,
-          );
+      await ref
+          .read(authRepositoryProvider)
+          .signInConductor(_usernameController.text, _passwordController.text);
       // Router auto-redirects via authStateProvider
     } on AuthException catch (e) {
       debugPrint('[CONDUCTOR] sign-in AuthException: ${e.message}');
@@ -300,11 +302,14 @@ class _ConductorLoginSectionState
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
-                : const Text('Enter Demo (Conductor)',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                : const Text(
+                    'Enter Demo (Conductor)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
           ),
         // Native apps: real username/password sign-in.
         if (!kIsWeb) ...[
@@ -363,8 +368,7 @@ class _ConductorLoginSectionState
                   )
                 : const Text(
                     'Sign In',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
           ),
         ],
@@ -452,7 +456,9 @@ class _PassengerLoginSectionState
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text(
                     'Enter Demo (Student)',

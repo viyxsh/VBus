@@ -27,9 +27,11 @@ class _PassengerEditProfileSheetState
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(
-        text: widget.profile['name'] as String? ?? '');
+      text: widget.profile['name'] as String? ?? '',
+    );
     _phoneCtrl = TextEditingController(
-        text: widget.profile['phone'] as String? ?? '');
+      text: widget.profile['phone'] as String? ?? '',
+    );
     _selectedStopId = widget.profile['stop_id'] as String?;
   }
 
@@ -44,7 +46,9 @@ class _PassengerEditProfileSheetState
     if (_nameCtrl.text.trim().isEmpty) return;
     setState(() => _saving = true);
     try {
-      await ref.read(passengerRepositoryProvider).updateProfile(
+      await ref
+          .read(passengerRepositoryProvider)
+          .updateProfile(
             name: _nameCtrl.text.trim(),
             phone: _phoneCtrl.text.trim(),
             stopId: _selectedStopId,
@@ -54,11 +58,17 @@ class _PassengerEditProfileSheetState
     } catch (e) {
       debugPrint('[PROFILE] save error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(
-              e, fallback: S.t(context, 'Failed to save changes.'))),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              friendlyError(
+                e,
+                fallback: S.t(context, 'Failed to save changes.'),
+              ),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -72,7 +82,11 @@ class _PassengerEditProfileSheetState
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+        20,
+        20,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -87,7 +101,8 @@ class _PassengerEditProfileSheetState
               labelText: S.t(context, 'Full Name'),
               prefixIcon: const Icon(Icons.person_outline),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -99,7 +114,8 @@ class _PassengerEditProfileSheetState
               labelText: S.t(context, 'Phone Number'),
               prefixIcon: const Icon(Icons.phone_outlined),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -108,8 +124,10 @@ class _PassengerEditProfileSheetState
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             ),
             error: (_, __) => const SizedBox.shrink(),
@@ -119,14 +137,21 @@ class _PassengerEditProfileSheetState
                 labelText: S.t(context, 'My Boarding Stop'),
                 prefixIcon: const Icon(Icons.location_on_outlined),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               isExpanded: true,
-              items: stops.map((s) => DropdownMenuItem<String>(
-                value: s['id'] as String,
-                child: Text(s['name'] as String,
-                    overflow: TextOverflow.ellipsis),
-              )).toList(),
+              items: stops
+                  .map(
+                    (s) => DropdownMenuItem<String>(
+                      value: s['id'] as String,
+                      child: Text(
+                        s['name'] as String,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: (v) => setState(() => _selectedStopId = v),
             ),
           ),
@@ -136,16 +161,22 @@ class _PassengerEditProfileSheetState
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _saving
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(S.t(context, 'Save Changes'),
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    S.t(context, 'Save Changes'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
           ),
         ],
       ),

@@ -6,7 +6,10 @@ import 'dart:io';
 /// Network failures (no internet, DNS failure, timeouts) are by far the most
 /// common real-world error, so they get a clear, actionable message instead of
 /// a raw stack-tracey string.
-String friendlyError(Object error, {String fallback = 'Something went wrong. Please try again.'}) {
+String friendlyError(
+  Object error, {
+  String fallback = 'Something went wrong. Please try again.',
+}) {
   if (isOffline(error)) {
     return 'No internet connection. Check your network and try again.';
   }

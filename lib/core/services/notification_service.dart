@@ -6,13 +6,14 @@ class NotificationService {
 
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  static const _channelId   = 'bus_proximity';
+  static const _channelId = 'bus_proximity';
   static const _channelName = 'Bus Proximity Alerts';
 
   static Future<void> init() async {
     if (kIsWeb) return; // local notifications aren't supported on web
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: false,
@@ -20,14 +21,14 @@ class NotificationService {
     );
 
     await _plugin.initialize(
-      const InitializationSettings(
-          android: androidSettings, iOS: iosSettings),
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
 
     // Request POST_NOTIFICATIONS permission on Android 13+
     final android = _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.requestNotificationsPermission();
   }
 
@@ -40,8 +41,7 @@ class NotificationService {
     const androidDetails = AndroidNotificationDetails(
       _channelId,
       _channelName,
-      channelDescription:
-          'Alerts when the bus is approaching your custom pin',
+      channelDescription: 'Alerts when the bus is approaching your custom pin',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
@@ -52,8 +52,7 @@ class NotificationService {
       id,
       title,
       body,
-      const NotificationDetails(
-          android: androidDetails, iOS: iosDetails),
+      const NotificationDetails(android: androidDetails, iOS: iosDetails),
     );
   }
 }

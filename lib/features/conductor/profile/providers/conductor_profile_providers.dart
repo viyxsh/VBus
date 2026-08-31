@@ -26,4 +26,6 @@ Future<List<Map<String, dynamic>>> busRequests(Ref ref, String busId) =>
 /// Pending seat reservation requests for the conductor's bus.
 @riverpod
 Future<List<SeatReservation>> pendingSeatReservations(Ref ref, String busId) =>
-    ref.watch(seatReservationRepositoryProvider).pendingReservationsForBus(busId);
+    ref
+        .watch(seatReservationRepositoryProvider)
+        .pendingReservationsForBus(busId);

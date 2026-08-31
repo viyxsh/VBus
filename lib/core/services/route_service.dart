@@ -25,12 +25,13 @@ class RouteService {
   static void clearCache() => _cache.clear();
 
   static Future<List<LatLng>> getRoutePoints(
-      List<Map<String, dynamic>> stops) async {
+    List<Map<String, dynamic>> stops,
+  ) async {
     final key = _cacheKey(stops);
     if (_cache.containsKey(key)) return _cache[key]!;
 
     final valid = stops.where((s) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       return lat != 0.0 && lng != 0.0;
     }).toList();
@@ -40,9 +41,11 @@ class RouteService {
     try {
       // OSRM uses lng,lat order
       final coords = valid
-          .map((s) =>
-              '${(s['longitude'] as num).toDouble()},'
-              '${(s['latitude']  as num).toDouble()}')
+          .map(
+            (s) =>
+                '${(s['longitude'] as num).toDouble()},'
+                '${(s['latitude'] as num).toDouble()}',
+          )
           .join(';');
 
       // radiuses tells OSRM to snap each waypoint to the nearest road
@@ -58,10 +61,11 @@ class RouteService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final encoded =
-            (data['routes'] as List).first['geometry'] as String;
+        final encoded = (data['routes'] as List).first['geometry'] as String;
         _cache[key] = decodePolyline(encoded);
-        debugPrint('[ROUTE] road polyline fetched — ${_cache[key]!.length} points');
+        debugPrint(
+          '[ROUTE] road polyline fetched — ${_cache[key]!.length} points',
+        );
         return _cache[key]!;
       }
     } catch (e) {
@@ -70,10 +74,12 @@ class RouteService {
 
     // Fallback: straight lines between stops
     _cache[key] = valid
-        .map((s) => LatLng(
-              (s['latitude']  as num).toDouble(),
-              (s['longitude'] as num).toDouble(),
-            ))
+        .map(
+          (s) => LatLng(
+            (s['latitude'] as num).toDouble(),
+            (s['longitude'] as num).toDouble(),
+          ),
+        )
         .toList();
     return _cache[key]!;
   }

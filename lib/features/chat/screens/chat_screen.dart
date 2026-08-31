@@ -73,7 +73,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final senderName =
           ref.read(currentUserDisplayNameProvider).valueOrNull ?? 'Unknown';
-      await ref.read(chatRepositoryProvider).sendMessage(
+      await ref
+          .read(chatRepositoryProvider)
+          .sendMessage(
             roomId: widget.roomId,
             senderName: senderName,
             content: text,
@@ -82,11 +84,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _controller.text = text; // restore so the user doesn't lose their message
       debugPrint('[CHAT] send error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(
-              e, fallback: S.t(context, 'Message not sent. Try again.'))),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              friendlyError(
+                e,
+                fallback: S.t(context, 'Message not sent. Try again.'),
+              ),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -114,7 +122,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _translationCache[id] = translated;
       // Persist in background – show immediately from cache regardless
       try {
-        await ref.read(chatRepositoryProvider).saveTranslation(
+        await ref
+            .read(chatRepositoryProvider)
+            .saveTranslation(
               messageId: id,
               languageCode: targetLang,
               translatedText: translated,
@@ -130,10 +140,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (e) {
       debugPrint('[CHAT] translate error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(S.t(context, 'Translation failed. Try again.')),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(S.t(context, 'Translation failed. Try again.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _translatingId = null);
@@ -146,7 +158,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => ChatInfoSheet(
         roomId: widget.roomId,
         title: widget.title,
@@ -164,10 +177,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     if (widget.title.isEmpty) {
       return S.t(
-          context,
-          ref.read(chatRepositoryProvider).isConductor
-              ? 'Passenger'
-              : 'Conductor');
+        context,
+        ref.read(chatRepositoryProvider).isConductor
+            ? 'Passenger'
+            : 'Conductor',
+      );
     }
     return widget.title;
   }
@@ -175,7 +189,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final messagesAsync = ref.watch(chatMessagesProvider(widget.roomId, since: _since));
+    final messagesAsync = ref.watch(
+      chatMessagesProvider(widget.roomId, since: _since),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -185,36 +201,52 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         actions: [
           if (!widget.isBroadcast) ...[
             IconButton(
-              icon: Builder(builder: (ctx) => SvgPicture.asset(
-                'assets/icons/phone-call.svg', width: 22, height: 22,
-                colorFilter: ColorFilter.mode(Theme.of(ctx).colorScheme.onSurface, BlendMode.srcIn))),
+              icon: Builder(
+                builder: (ctx) => SvgPicture.asset(
+                  'assets/icons/phone-call.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(ctx).colorScheme.onSurface,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
               tooltip: S.t(context, 'Call'),
               onPressed: () async {
                 if (widget.phone == null || widget.phone!.isEmpty) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                          content:
-                              Text(S.t(context, 'Phone number not available'))),
+                        content: Text(
+                          S.t(context, 'Phone number not available'),
+                        ),
+                      ),
                     );
                   }
                   return;
                 }
-                final clean = widget.phone!
-                    .replaceAll(RegExp(r'[^\d+]'), '');
+                final clean = widget.phone!.replaceAll(RegExp(r'[^\d+]'), '');
                 final launched = await launchUrl(
-                    Uri(scheme: 'tel', path: clean));
+                  Uri(scheme: 'tel', path: clean),
+                );
                 if (!launched && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text(S.t(
-                            context, 'Calling is not supported on this device'))),
+                      content: Text(
+                        S.t(context, 'Calling is not supported on this device'),
+                      ),
+                    ),
                   );
                 }
               },
             ),
             IconButton(
-              icon: SvgPicture.asset('assets/icons/info.svg', width: 22, height: 22),
+              icon: SvgPicture.asset(
+                'assets/icons/info.svg',
+                width: 22,
+                height: 22,
+              ),
               tooltip: S.t(context, 'Info'),
               onPressed: () => _showInfo(context),
             ),
@@ -235,7 +267,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         controller: _scrollController,
                         reverse: true,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         itemCount: items.length,
                         itemBuilder: (_, i) {
                           final item = items[i];
@@ -259,8 +293,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline,
-              size: 48, color: theme.colorScheme.error),
+          Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
           const SizedBox(height: 12),
           Text(
             S.t(context, 'Could not load messages'),
@@ -284,8 +317,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.chat_bubble_outline,
-              size: 48, color: theme.colorScheme.outlineVariant),
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 48,
+            color: theme.colorScheme.outlineVariant,
+          ),
           const SizedBox(height: 12),
           Text(
             S.t(context, 'No messages yet'),
@@ -309,15 +345,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isMe = msg.isMe;
     final showTranslation = _showTranslation.contains(msg.id);
     final targetLang = TranslationService.isHindi(msg.content) ? 'en' : 'hi';
-    final translatedText = _translationCache[msg.id] ?? msg.translations[targetLang];
+    final translatedText =
+        _translationCache[msg.id] ?? msg.translations[targetLang];
     final hasTranslation = translatedText != null;
     final maxBubbleWidth = MediaQuery.of(context).size.width * 0.75;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -340,8 +378,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxBubbleWidth),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isMe
                     ? theme.colorScheme.primary
@@ -373,9 +410,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Text(
                     msg.content,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isMe
-                          ? Colors.white
-                          : theme.colorScheme.onSurface,
+                      color: isMe ? Colors.white : theme.colorScheme.onSurface,
                     ),
                   ),
                   if (hasTranslation && showTranslation) ...[
@@ -437,7 +472,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isTranslating = _translatingId == msg.id;
     final showTranslation = _showTranslation.contains(msg.id);
     final targetLang = TranslationService.isHindi(msg.content) ? 'en' : 'hi';
-    final translatedText = _translationCache[msg.id] ?? msg.translations[targetLang];
+    final translatedText =
+        _translationCache[msg.id] ?? msg.translations[targetLang];
     final hasTranslation = translatedText != null;
 
     Widget icon;
@@ -448,33 +484,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         height: 16,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: isMe
-              ? theme.colorScheme.primary
-              : theme.colorScheme.primary,
+          color: isMe ? theme.colorScheme.primary : theme.colorScheme.primary,
         ),
       );
       onTap = null;
     } else if (hasTranslation && showTranslation) {
-      icon = Icon(Icons.expand_less, size: 20,
-          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5));
+      icon = Icon(
+        Icons.expand_less,
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+      );
       onTap = () => setState(() => _showTranslation.remove(msg.id));
     } else if (hasTranslation && !showTranslation) {
-      icon = Icon(Icons.expand_more, size: 20,
-          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5));
+      icon = Icon(
+        Icons.expand_more,
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+      );
       onTap = () => setState(() => _showTranslation.add(msg.id));
     } else {
-      icon = Icon(Icons.translate, size: 16,
-          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4));
+      icon = Icon(
+        Icons.translate,
+        size: 16,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+      );
       onTap = () => _translateMessage(msg);
     }
 
     return GestureDetector(
       onTap: onTap,
-      child: SizedBox(
-        width: 24,
-        height: 24,
-        child: Center(child: icon),
-      ),
+      child: SizedBox(width: 24, height: 24, child: Center(child: icon)),
     );
   }
 
@@ -501,7 +540,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerLow,
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
@@ -524,9 +565,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
-                  : SvgPicture.asset('assets/icons/send.svg', width: 20, height: 20, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                  : SvgPicture.asset(
+                      'assets/icons/send.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -548,7 +599,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final items = <Object>[];
     for (int i = 0; i < messages.length; i++) {
       items.add(messages[i]);
-      final d = DateTime(messages[i].sentAt.year, messages[i].sentAt.month, messages[i].sentAt.day);
+      final d = DateTime(
+        messages[i].sentAt.year,
+        messages[i].sentAt.month,
+        messages[i].sentAt.day,
+      );
       final next = i + 1 < messages.length ? messages[i + 1] : null;
       final nextD = next != null
           ? DateTime(next.sentAt.year, next.sentAt.month, next.sentAt.day)
@@ -579,7 +634,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         'Sun',
       ].map((d) => S.t(context, d)).toList()[date.weekday - 1];
     } else {
-      label = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${(date.year % 100).toString().padLeft(2, '0')}';
+      label =
+          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${(date.year % 100).toString().padLeft(2, '0')}';
     }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -587,7 +643,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.8,
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -616,7 +674,11 @@ class _DottedLinePainter extends CustomPainter {
     const gap = 3.0;
     double start = 0;
     while (start < size.width) {
-      canvas.drawLine(Offset(start, 0), Offset((start + dot).clamp(0, size.width), 0), paint);
+      canvas.drawLine(
+        Offset(start, 0),
+        Offset((start + dot).clamp(0, size.width), 0),
+        paint,
+      );
       start += dot + gap;
     }
   }

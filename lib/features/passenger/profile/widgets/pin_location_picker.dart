@@ -64,22 +64,32 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
   }
 
   void _fitBounds() {
-    final valid = _stops.where((s) =>
-        (s['latitude'] as num).toDouble() != 0 &&
-        (s['longitude'] as num).toDouble() != 0).toList();
+    final valid = _stops
+        .where(
+          (s) =>
+              (s['latitude'] as num).toDouble() != 0 &&
+              (s['longitude'] as num).toDouble() != 0,
+        )
+        .toList();
     if (valid.isEmpty || _mapController == null) return;
     double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
     for (final s in valid) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
-      minLat = min(minLat, lat); maxLat = max(maxLat, lat);
-      minLng = min(minLng, lng); maxLng = max(maxLng, lng);
+      minLat = min(minLat, lat);
+      maxLat = max(maxLat, lat);
+      minLng = min(minLng, lng);
+      maxLng = max(maxLng, lng);
     }
-    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(
-          southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)),
-      80,
-    ));
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        80,
+      ),
+    );
   }
 
   void _fitOsmBounds() {
@@ -104,18 +114,19 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
       final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
-      markers.add(OsmMapHelpers.stopMarker(
-        id: s['id'] as String,
-        lat: lat,
-        lng: lng,
-        name: s['name'] as String,
-      ));
+      markers.add(
+        OsmMapHelpers.stopMarker(
+          id: s['id'] as String,
+          lat: lat,
+          lng: lng,
+          name: s['name'] as String,
+        ),
+      );
     }
     if (_picked != null) {
-      markers.add(OsmMapHelpers.pickedMarker(
-        _picked!.latitude,
-        _picked!.longitude,
-      ));
+      markers.add(
+        OsmMapHelpers.pickedMarker(_picked!.latitude, _picked!.longitude),
+      );
     }
     return markers;
   }
@@ -123,22 +134,30 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
   Set<Marker> _buildMarkers() {
     final markers = <Marker>{};
     for (final s in _stops) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
-      markers.add(Marker(
-        markerId: MarkerId(s['id'] as String),
-        position: LatLng(lat, lng),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        infoWindow: InfoWindow(title: s['name'] as String),
-      ));
+      markers.add(
+        Marker(
+          markerId: MarkerId(s['id'] as String),
+          position: LatLng(lat, lng),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+          infoWindow: InfoWindow(title: s['name'] as String),
+        ),
+      );
     }
     if (_picked != null) {
-      markers.add(Marker(
-        markerId: const MarkerId('picked'),
-        position: _picked!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-      ));
+      markers.add(
+        Marker(
+          markerId: const MarkerId('picked'),
+          position: _picked!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange,
+          ),
+        ),
+      );
     }
     return markers;
   }
@@ -173,8 +192,9 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
                     routePoints: OsmMapHelpers.toOsmList(_routePoints),
                     markers: _buildOsmMarkers(),
                     onMapReady: _fitOsmBounds,
-                    onTap: (p) =>
-                        setState(() => _picked = LatLng(p.latitude, p.longitude)),
+                    onTap: (p) => setState(
+                      () => _picked = LatLng(p.latitude, p.longitude),
+                    ),
                   )
                 else
                   GoogleMap(
@@ -190,19 +210,25 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
                     zoomControlsEnabled: false,
                   ),
                 Positioned(
-                  top: 12, left: 12, right: 12,
+                  top: 12,
+                  left: 12,
+                  right: 12,
                   child: Material(
                     elevation: 2,
                     borderRadius: BorderRadius.circular(10),
                     color: theme.colorScheme.surface,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       child: Row(
                         children: [
-                          Icon(Icons.touch_app_outlined,
-                              size: 18,
-                              color: theme.colorScheme.onSurfaceVariant),
+                          Icon(
+                            Icons.touch_app_outlined,
+                            size: 18,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -210,7 +236,8 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
                                   ? 'Tap anywhere on the map to drop a pin'
                                   : 'Tap again to move the pin',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant),
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
                         ],
@@ -232,10 +259,13 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(50),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Use This Location',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Use This Location',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ),

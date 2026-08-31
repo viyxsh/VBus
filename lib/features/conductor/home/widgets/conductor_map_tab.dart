@@ -71,12 +71,20 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
       final routeId = bus['route_id'] as String;
 
       _stops = (await tracking.stopsForRoute(routeId))
-        ..sort((a, b) => (a['stop_order'] as num).compareTo(b['stop_order'] as num));
-      debugPrint('[MAP] first stop: ${_stops.isNotEmpty ? _stops.first['name'] : 'none'}'
-          ', last: ${_stops.isNotEmpty ? _stops.last['name'] : 'none'}');
+        ..sort(
+          (a, b) => (a['stop_order'] as num).compareTo(b['stop_order'] as num),
+        );
+      debugPrint(
+        '[MAP] first stop: ${_stops.isNotEmpty ? _stops.first['name'] : 'none'}'
+        ', last: ${_stops.isNotEmpty ? _stops.last['name'] : 'none'}',
+      );
       _routePoints = await RouteService.getRoutePoints(_stops);
 
-      _stopIcon = await circleMarkerIcon(fill: Colors.white, stroke: const Color(0xFF37474F), size: 32);
+      _stopIcon = await circleMarkerIcon(
+        fill: Colors.white,
+        stroke: const Color(0xFF37474F),
+        size: 32,
+      );
       // Start SVG icon creation concurrently after several awaits (first frame is built).
       final busIconFuture = mounted
           ? busMarkerIconFromSvg(context, 32, debugTag: '[CONDUCTOR_MAP]')
@@ -91,7 +99,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
         // Prime the stop-based marker so it shows before GPS lock
         if (_busStopIndex < _stops.length) {
           final s = _stops[_busStopIndex];
-          final lat = (s['latitude']  as num).toDouble();
+          final lat = (s['latitude'] as num).toDouble();
           final lng = (s['longitude'] as num).toDouble();
           if (lat != 0 || lng != 0) _busMarkerPosition = LatLng(lat, lng);
         }
@@ -113,10 +121,9 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   }
 
   void _startTripListener() {
-    _tripSub = ref
-        .read(trackingRepositoryProvider)
-        .watchTrip(_tripId!)
-        .listen((data) {
+    _tripSub = ref.read(trackingRepositoryProvider).watchTrip(_tripId!).listen((
+      data,
+    ) {
       if (data.isEmpty || !mounted) return;
       final newIdx = (data.first['current_stop_index'] as num).toInt();
       if (newIdx != _busStopIndex) {
@@ -129,7 +136,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   void _moveToStop(int idx) {
     if (idx >= _stops.length) return;
     final stop = _stops[idx];
-    final lat = (stop['latitude']  as num).toDouble();
+    final lat = (stop['latitude'] as num).toDouble();
     final lng = (stop['longitude'] as num).toDouble();
     if (lat == 0 && lng == 0) return;
     final pos = LatLng(lat, lng);
@@ -146,7 +153,11 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   Future<void> _startTracking() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      if (mounted) setState(() { _myLocation = null; });
+      if (mounted) {
+        setState(() {
+          _myLocation = null;
+        });
+      }
       return;
     }
 
@@ -156,38 +167,54 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     }
     if (permission == LocationPermission.deniedForever ||
         permission == LocationPermission.denied) {
-      if (mounted) setState(() { _myLocation = null; });
+      if (mounted) {
+        setState(() {
+          _myLocation = null;
+        });
+      }
       return;
     }
 
-    _locationSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      ),
-    ).listen(
-      (pos) async {
-        final loc = LatLng(pos.latitude, pos.longitude);
-        if (mounted) setState(() { _myLocation = loc; });
+    _locationSub =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+          ),
+        ).listen(
+          (pos) async {
+            final loc = LatLng(pos.latitude, pos.longitude);
+            if (mounted) {
+              setState(() {
+                _myLocation = loc;
+              });
+            }
 
-      // Only broadcast to passengers during an active trip
-      if (!_hasActiveTrip || _tripId == null) return;
-      try {
-        await ref.read(trackingRepositoryProvider).upsertBusLocation(
-              busId: _busId,
-              tripId: _tripId!,
-              latitude: pos.latitude,
-              longitude: pos.longitude,
-              heading: pos.heading,
-              speedKmh: pos.speed * 3.6,
-            );
-      } catch (e) {
-        debugPrint('[CONDUCTOR_MAP] upsert error: $e');
-      }
-    },
-      onError: (_) {
-      if (mounted) setState(() { _myLocation = null; });
-    });
+            // Only broadcast to passengers during an active trip
+            if (!_hasActiveTrip || _tripId == null) return;
+            try {
+              await ref
+                  .read(trackingRepositoryProvider)
+                  .upsertBusLocation(
+                    busId: _busId,
+                    tripId: _tripId!,
+                    latitude: pos.latitude,
+                    longitude: pos.longitude,
+                    heading: pos.heading,
+                    speedKmh: pos.speed * 3.6,
+                  );
+            } catch (e) {
+              debugPrint('[CONDUCTOR_MAP] upsert error: $e');
+            }
+          },
+          onError: (_) {
+            if (mounted) {
+              setState(() {
+                _myLocation = null;
+              });
+            }
+          },
+        );
   }
 
   void _recenter() {
@@ -224,14 +251,20 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {
-        OsmMapHelpers.fitBounds(_osmController, _stops,
-            bus: _myLocation ?? _busMarkerPosition);
+        OsmMapHelpers.fitBounds(
+          _osmController,
+          _stops,
+          bus: _myLocation ?? _busMarkerPosition,
+        );
       } catch (_) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           try {
-            OsmMapHelpers.fitBounds(_osmController, _stops,
-                bus: _myLocation ?? _busMarkerPosition);
+            OsmMapHelpers.fitBounds(
+              _osmController,
+              _stops,
+              bus: _myLocation ?? _busMarkerPosition,
+            );
           } catch (_) {}
         });
       }
@@ -244,79 +277,100 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
       final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
-      markers.add(OsmMapHelpers.stopMarker(
-        id: s['id'] as String,
-        lat: lat,
-        lng: lng,
-        name: s['name'] as String,
-      ));
+      markers.add(
+        OsmMapHelpers.stopMarker(
+          id: s['id'] as String,
+          lat: lat,
+          lng: lng,
+          name: s['name'] as String,
+        ),
+      );
     }
     final busPos = _myLocation ?? _busMarkerPosition;
     if (busPos != null) {
-      markers.add(OsmMapHelpers.busMarker(
-        lat: busPos.latitude,
-        lng: busPos.longitude,
-        // Faded when it's only a stop-based estimate without live GPS.
-        opacity: _myLocation != null ? 1.0 : 0.55,
-      ));
+      markers.add(
+        OsmMapHelpers.busMarker(
+          lat: busPos.latitude,
+          lng: busPos.longitude,
+          // Faded when it's only a stop-based estimate without live GPS.
+          opacity: _myLocation != null ? 1.0 : 0.55,
+        ),
+      );
     }
     return markers;
   }
 
   void _fitBounds() {
-    final valid = _stops.where((s) =>
-        (s['latitude'] as num).toDouble() != 0 &&
-        (s['longitude'] as num).toDouble() != 0).toList();
+    final valid = _stops
+        .where(
+          (s) =>
+              (s['latitude'] as num).toDouble() != 0 &&
+              (s['longitude'] as num).toDouble() != 0,
+        )
+        .toList();
     if (valid.isEmpty || _mapController == null) return;
     double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
     for (final s in valid) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
-      minLat = min(minLat, lat); maxLat = max(maxLat, lat);
-      minLng = min(minLng, lng); maxLng = max(maxLng, lng);
+      minLat = min(minLat, lat);
+      maxLat = max(maxLat, lat);
+      minLng = min(minLng, lng);
+      maxLng = max(maxLng, lng);
     }
-    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)),
-      80,
-    ));
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        80,
+      ),
+    );
   }
 
   Set<Marker> _buildMarkers() {
     if (_stopIcon == null) return {};
     final markers = <Marker>{};
     for (final s in _stops) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
-      markers.add(Marker(
-        markerId: MarkerId(s['id'] as String),
-        position: LatLng(lat, lng),
-        icon: _stopIcon!,
-        anchor: const Offset(0.5, 0.5),
-        infoWindow: InfoWindow(title: s['name'] as String),
-      ));
+      markers.add(
+        Marker(
+          markerId: MarkerId(s['id'] as String),
+          position: LatLng(lat, lng),
+          icon: _stopIcon!,
+          anchor: const Offset(0.5, 0.5),
+          infoWindow: InfoWindow(title: s['name'] as String),
+        ),
+      );
     }
     if (_busIcon != null) {
       if (_myLocation != null) {
         // Live GPS — full opacity
-        markers.add(Marker(
-          markerId: const MarkerId('bus'),
-          position: _myLocation!,
-          icon: _busIcon!,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: 2,
-          alpha: 1.0,
-        ));
+        markers.add(
+          Marker(
+            markerId: const MarkerId('bus'),
+            position: _myLocation!,
+            icon: _busIcon!,
+            anchor: const Offset(0.5, 0.5),
+            zIndexInt: 2,
+            alpha: 1.0,
+          ),
+        );
       } else if (_busMarkerPosition != null) {
         // Stop-based estimate (manual advance, no GPS) — faded at same size
-        markers.add(Marker(
-          markerId: const MarkerId('bus'),
-          position: _busMarkerPosition!,
-          icon: _busIcon!,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: 2,
-          alpha: 0.55,
-        ));
+        markers.add(
+          Marker(
+            markerId: const MarkerId('bus'),
+            position: _busMarkerPosition!,
+            icon: _busIcon!,
+            anchor: const Offset(0.5, 0.5),
+            zIndexInt: 2,
+            alpha: 0.55,
+          ),
+        );
       }
     }
     return markers;
@@ -438,7 +492,8 @@ class _ConductorBottomSheet extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
@@ -450,17 +505,26 @@ class _ConductorBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
               children: [
-                Text('Bus $busNumber',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  'Bus $busNumber',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 _badge(
                   hasActiveTrip
                       ? (broadcasting ? '● Broadcasting' : '● Getting GPS…')
                       : 'No Trip',
-                  hasActiveTrip ? Colors.green.shade700 : theme.colorScheme.onSurfaceVariant,
-                  hasActiveTrip ? Colors.green.shade50 : theme.colorScheme.surfaceContainerHigh,
-                  hasActiveTrip ? Colors.green.shade400 : theme.colorScheme.outlineVariant,
+                  hasActiveTrip
+                      ? Colors.green.shade700
+                      : theme.colorScheme.onSurfaceVariant,
+                  hasActiveTrip
+                      ? Colors.green.shade50
+                      : theme.colorScheme.surfaceContainerHigh,
+                  hasActiveTrip
+                      ? Colors.green.shade400
+                      : theme.colorScheme.outlineVariant,
                   theme,
                 ),
                 const Spacer(),
@@ -468,8 +532,9 @@ class _ConductorBottomSheet extends StatelessWidget {
                   stops.isNotEmpty
                       ? '${stops.first['name']} → ${stops.last['name']}'
                       : '',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -480,10 +545,10 @@ class _ConductorBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 16, 24),
             child: Column(
               children: List.generate(stops.length, (i) {
-                final s         = stops[i];
+                final s = stops[i];
                 final isCurrent = hasActiveTrip && i == busStopIndex;
-                final isPassed  = hasActiveTrip && i < busStopIndex;
-                final isLast    = i == stops.length - 1;
+                final isPassed = hasActiveTrip && i < busStopIndex;
+                final isLast = i == stops.length - 1;
 
                 return IntrinsicHeight(
                   child: Row(
@@ -511,7 +576,10 @@ class _ConductorBottomSheet extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Padding(
-                          padding: EdgeInsets.only(bottom: isLast ? 0 : 18, top: 2),
+                          padding: EdgeInsets.only(
+                            bottom: isLast ? 0 : 18,
+                            top: 2,
+                          ),
                           child: Row(
                             children: [
                               Expanded(
@@ -530,16 +598,21 @@ class _ConductorBottomSheet extends StatelessWidget {
                               if (isCurrent)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF3D3D8F),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Text('Current',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600)),
+                                  child: const Text(
+                                    'Current',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                             ],
                           ),
@@ -559,17 +632,25 @@ class _ConductorBottomSheet extends StatelessWidget {
   Widget _dot(bool isCurrent, bool isPassed, ThemeData theme) {
     if (isCurrent) {
       return Container(
-        width: 24, height: 24,
+        width: 24,
+        height: 24,
         decoration: const BoxDecoration(
-            color: Color(0xFF1565C0), shape: BoxShape.circle),
+          color: Color(0xFF1565C0),
+          shape: BoxShape.circle,
+        ),
         child: Center(
-          child: SvgPicture.asset('assets/icons/bus.svg', width: 14, height: 14,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+          child: SvgPicture.asset(
+            'assets/icons/bus.svg',
+            width: 14,
+            height: 14,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
         ),
       );
     }
     return Container(
-      width: 14, height: 14,
+      width: 14,
+      height: 14,
       margin: const EdgeInsets.only(top: 5),
       decoration: BoxDecoration(
         color: isPassed ? const Color(0xFF1A237E) : Colors.white,
@@ -582,8 +663,13 @@ class _ConductorBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _badge(String label, Color textColor, Color bgColor,
-      Color borderColor, ThemeData theme) {
+  Widget _badge(
+    String label,
+    Color textColor,
+    Color bgColor,
+    Color borderColor,
+    ThemeData theme,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -591,9 +677,13 @@ class _ConductorBottomSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
       ),
-      child: Text(label,
-          style: theme.textTheme.labelSmall?.copyWith(
-              color: textColor, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -604,10 +694,7 @@ class _MapControls extends StatelessWidget {
   final bool hasActiveTrip;
   final VoidCallback onRecenter;
 
-  const _MapControls({
-    required this.hasActiveTrip,
-    required this.onRecenter,
-  });
+  const _MapControls({required this.hasActiveTrip, required this.onRecenter});
 
   @override
   Widget build(BuildContext context) {
@@ -640,8 +727,12 @@ class _MapControls extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(border: border),
         child: Center(
-          child: SvgPicture.asset(svgPath, width: 20, height: 20,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn)),
+          child: SvgPicture.asset(
+            svgPath,
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+          ),
         ),
       ),
     );

@@ -38,21 +38,23 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   List<Map<String, dynamic>> _stops = [];
   List<LatLng> _routePoints = [];
   bool _hasActiveTrip = false;
-  String? _tripId; // current ongoing trip — used to reject stale bus_locations rows
+  String?
+  _tripId; // current ongoing trip — used to reject stale bus_locations rows
   LatLng? _busLocation;
   int _busStopIndex = -1;
 
   // GPS-derived progress — keeps the bottom-sheet timeline in sync with the live
   // bus marker instead of relying solely on the trip's current_stop_index (which
   // only advances while the conductor is on the attendance screen).
-  int _liveStopIndex = -1;          // stop the bus is at / heading toward
-  bool _busAtStop = false;          // true when the bus is physically at _liveStopIndex
-  bool _busOffRoute = false;        // true when the bus is far from the drawn route
+  int _liveStopIndex = -1; // stop the bus is at / heading toward
+  bool _busAtStop = false; // true when the bus is physically at _liveStopIndex
+  bool _busOffRoute = false; // true when the bus is far from the drawn route
   List<double> _stopDistAlong = []; // each stop's distance (km) along the route
-  double _busAlongKm = 0;           // bus's distance (km) along the route
+  double _busAlongKm = 0; // bus's distance (km) along the route
 
-  static const double _kAtStopKm   = 0.25; // within this of a stop → "at" it
-  static const double _kOffRouteKm = 2.0;  // farther than this from the route → off-route
+  static const double _kAtStopKm = 0.25; // within this of a stop → "at" it
+  static const double _kOffRouteKm =
+      2.0; // farther than this from the route → off-route
 
   List<Map<String, dynamic>> _customPins = [];
   double _busSpeedKmh = 30.0;
@@ -91,22 +93,35 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       final tracking = ref.read(trackingRepositoryProvider);
       final profile = await tracking.passengerBusInfo();
 
-      _busId    = profile['bus_id']  as String;
+      _busId = profile['bus_id'] as String;
       _myStopId = profile['stop_id'] as String;
       final bus = profile['buses'] as Map;
       _busNumber = bus['bus_number'] as String;
       final routeId = bus['route_id'] as String;
 
       _stops = (await tracking.stopsForRoute(routeId))
-        ..sort((a, b) => (a['stop_order'] as num).compareTo(b['stop_order'] as num));
+        ..sort(
+          (a, b) => (a['stop_order'] as num).compareTo(b['stop_order'] as num),
+        );
       _myStopIndex = _stops.indexWhere((s) => s['id'] == _myStopId);
-      debugPrint('[MAP] first stop: ${_stops.isNotEmpty ? _stops.first['name'] : 'none'}');
+      debugPrint(
+        '[MAP] first stop: ${_stops.isNotEmpty ? _stops.first['name'] : 'none'}',
+      );
       _routePoints = await RouteService.getRoutePoints(_stops);
       _computeStopDistances();
 
-      _stopIcon   = await circleMarkerIcon(fill: Colors.white, stroke: const Color(0xFF37474F), size: 32);
-      _myStopIcon = await circleMarkerIcon(fill: Colors.green.shade600, stroke: Colors.white, size: 32, strokeWidth: 3);
-      _pinIcon    = await customPinMarkerIcon(32);
+      _stopIcon = await circleMarkerIcon(
+        fill: Colors.white,
+        stroke: const Color(0xFF37474F),
+        size: 32,
+      );
+      _myStopIcon = await circleMarkerIcon(
+        fill: Colors.green.shade600,
+        stroke: Colors.white,
+        size: 32,
+        strokeWidth: 3,
+      );
+      _pinIcon = await customPinMarkerIcon(32);
       final busIconFuture = mounted
           ? busMarkerIconFromSvg(context, 32, debugTag: '[PASSENGER_MAP]')
           : busMarkerIconFallback(32);
@@ -123,8 +138,8 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
         // location) and must not be shown.
         final loc = await tracking.busLocationForTrip(_busId, _tripId!);
         if (loc != null) {
-          _busLocation  = LatLng(
-            (loc['latitude']  as num).toDouble(),
+          _busLocation = LatLng(
+            (loc['latitude'] as num).toDouble(),
             (loc['longitude'] as num).toDouble(),
           );
           _busSpeedKmh = (loc['speed_kmh'] as num?)?.toDouble() ?? 30.0;
@@ -134,7 +149,9 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       }
 
       // Load custom pins for this bus
-      _customPins = await ref.read(passengerRepositoryProvider).customPins(_busId);
+      _customPins = await ref
+          .read(passengerRepositoryProvider)
+          .customPins(_busId);
 
       _busIcon = await busIconFuture;
       if (mounted) {
@@ -148,22 +165,24 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   }
 
   void _subscribeToLocation() {
-    _channel = ref.read(trackingRepositoryProvider).subscribeBusLocations(
-      busId: _busId,
-      onRow: (r) {
-        if (!mounted) return;
-        // Reject updates from previous trips (stale conductor data)
-        if (r['trip_id'] != _tripId) return;
-        _busSpeedKmh = (r['speed_kmh'] as num?)?.toDouble() ?? _busSpeedKmh;
-        _busLocation = LatLng(
-          (r['latitude']  as num).toDouble(),
-          (r['longitude'] as num).toDouble(),
+    _channel = ref
+        .read(trackingRepositoryProvider)
+        .subscribeBusLocations(
+          busId: _busId,
+          onRow: (r) {
+            if (!mounted) return;
+            // Reject updates from previous trips (stale conductor data)
+            if (r['trip_id'] != _tripId) return;
+            _busSpeedKmh = (r['speed_kmh'] as num?)?.toDouble() ?? _busSpeedKmh;
+            _busLocation = LatLng(
+              (r['latitude'] as num).toDouble(),
+              (r['longitude'] as num).toDouble(),
+            );
+            _recomputeProgress();
+            if (mounted) setState(() {});
+            _checkPinProximity();
+          },
         );
-        _recomputeProgress();
-        if (mounted) setState(() {});
-        _checkPinProximity();
-      },
-    );
   }
 
   // ─── Custom pins ──────────────────────────────────────────────────────────────
@@ -177,8 +196,9 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       if (_notifiedPinIds.contains(id)) continue;
 
       final dist = haversineKm(
-        _busLocation!.latitude, _busLocation!.longitude,
-        (pin['latitude']  as num).toDouble(),
+        _busLocation!.latitude,
+        _busLocation!.longitude,
+        (pin['latitude'] as num).toDouble(),
         (pin['longitude'] as num).toDouble(),
       );
       final etaMins = (dist * 1.3) / speed * 60;
@@ -197,10 +217,9 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   }
 
   void _subscribeToTrip(String tripId) {
-    _tripSub = ref
-        .read(trackingRepositoryProvider)
-        .watchTrip(tripId)
-        .listen((data) {
+    _tripSub = ref.read(trackingRepositoryProvider).watchTrip(tripId).listen((
+      data,
+    ) {
       if (data.isEmpty || !mounted) return;
       final newIdx = (data.first['current_stop_index'] as num).toInt();
       if (newIdx != _busStopIndex) {
@@ -232,7 +251,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     _stopDistAlong = [];
     if (_routePoints.length < 2) return;
     for (final s in _stops) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       _stopDistAlong.add(
         (lat == 0 && lng == 0) ? 0 : _projectOntoRoute(LatLng(lat, lng))[0],
@@ -254,21 +273,28 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       return;
     }
 
-    final proj    = _projectOntoRoute(_busLocation!);
+    final proj = _projectOntoRoute(_busLocation!);
     final alongKm = proj[0];
-    _busAlongKm   = alongKm;
-    _busOffRoute  = proj[1] > _kOffRouteKm;
+    _busAlongKm = alongKm;
+    _busOffRoute = proj[1] > _kOffRouteKm;
 
     // Nearest stop by straight-line distance → "at stop" detection.
     int nearestIdx = 0;
     double nearestDist = double.infinity;
     for (int i = 0; i < _stops.length; i++) {
-      final lat = (_stops[i]['latitude']  as num).toDouble();
+      final lat = (_stops[i]['latitude'] as num).toDouble();
       final lng = (_stops[i]['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
       final d = haversineKm(
-          _busLocation!.latitude, _busLocation!.longitude, lat, lng);
-      if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+        _busLocation!.latitude,
+        _busLocation!.longitude,
+        lat,
+        lng,
+      );
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestIdx = i;
+      }
     }
 
     if (nearestDist <= _kAtStopKm) {
@@ -282,7 +308,10 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     _busAtStop = false;
     int ahead = _stops.length - 1;
     for (int i = 0; i < _stops.length; i++) {
-      if (_stopDistAlong[i] >= alongKm) { ahead = i; break; }
+      if (_stopDistAlong[i] >= alongKm) {
+        ahead = i;
+        break;
+      }
     }
     _liveStopIndex = ahead;
   }
@@ -321,10 +350,15 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       final b = _routePoints[i + 1];
       final seg = _segmentProjection(p, a, b);
       if (seg[1] < bestPerp) {
-        bestPerp  = seg[1];
+        bestPerp = seg[1];
         bestAlong = cumulative + seg[0];
       }
-      cumulative += haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
+      cumulative += haversineKm(
+        a.latitude,
+        a.longitude,
+        b.latitude,
+        b.longitude,
+      );
     }
     return [bestAlong, bestPerp];
   }
@@ -335,21 +369,23 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     final kmPerDegLng = 111.32 * cos(a.latitude * pi / 180);
     const kmPerDegLat = 111.32;
     final bx = (b.longitude - a.longitude) * kmPerDegLng;
-    final by = (b.latitude  - a.latitude)  * kmPerDegLat;
+    final by = (b.latitude - a.latitude) * kmPerDegLat;
     final px = (p.longitude - a.longitude) * kmPerDegLng;
-    final py = (p.latitude  - a.latitude)  * kmPerDegLat;
+    final py = (p.latitude - a.latitude) * kmPerDegLat;
     final segLen2 = bx * bx + by * by;
     double t = segLen2 == 0 ? 0 : (px * bx + py * by) / segLen2;
     t = t.clamp(0.0, 1.0);
     final projx = bx * t, projy = by * t;
     final along = sqrt(projx * projx + projy * projy);
-    final perp  = sqrt((px - projx) * (px - projx) + (py - projy) * (py - projy));
+    final perp = sqrt(
+      (px - projx) * (px - projx) + (py - projy) * (py - projy),
+    );
     return [along, perp];
   }
 
   Future<void> _addPin(LatLng position) async {
     final labelCtrl = TextEditingController();
-    int threshold   = 5;
+    int threshold = 5;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -366,7 +402,8 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
                   labelText: 'Label',
                   hintText: 'e.g. Near my colony gate',
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -375,13 +412,14 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
                 decoration: InputDecoration(
                   labelText: 'Notify me before',
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 items: [2, 5, 10, 15]
-                    .map((m) => DropdownMenuItem(
-                          value: m,
-                          child: Text('$m minutes'),
-                        ))
+                    .map(
+                      (m) =>
+                          DropdownMenuItem(value: m, child: Text('$m minutes')),
+                    )
                     .toList(),
                 onChanged: (v) => setSt(() => threshold = v!),
               ),
@@ -389,11 +427,13 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Add Pin')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Add Pin'),
+            ),
           ],
         ),
       ),
@@ -403,7 +443,9 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     if (labelCtrl.text.trim().isEmpty) return;
 
     try {
-      await ref.read(passengerRepositoryProvider).addCustomPin(
+      await ref
+          .read(passengerRepositoryProvider)
+          .addCustomPin(
             busId: _busId,
             label: labelCtrl.text.trim(),
             latitude: position.latitude,
@@ -414,10 +456,12 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       if (mounted) ref.invalidate(customPinsProvider(_busId));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(e, fallback: 'Failed to add pin.')),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError(e, fallback: 'Failed to add pin.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     }
   }
@@ -430,12 +474,14 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
         content: Text('Remove "$label"?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('Remove'),
           ),
         ],
@@ -500,44 +546,56 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
-      markers.add(OsmMapHelpers.stopMarker(
-        id: s['id'] as String,
-        lat: lat,
-        lng: lng,
-        name: s['name'] as String,
-        isMyStop: s['id'] == _myStopId,
-      ));
+      markers.add(
+        OsmMapHelpers.stopMarker(
+          id: s['id'] as String,
+          lat: lat,
+          lng: lng,
+          name: s['name'] as String,
+          isMyStop: s['id'] == _myStopId,
+        ),
+      );
     }
     if (_busLocation != null) {
-      markers.add(OsmMapHelpers.busMarker(
-        lat: _busLocation!.latitude,
-        lng: _busLocation!.longitude,
-      ));
+      markers.add(
+        OsmMapHelpers.busMarker(
+          lat: _busLocation!.latitude,
+          lng: _busLocation!.longitude,
+        ),
+      );
     }
     for (final pin in _customPins) {
       final id = pin['id'] as String;
-      markers.add(OsmMapHelpers.pinMarker(
-        id: id,
-        lat: (pin['latitude'] as num).toDouble(),
-        lng: (pin['longitude'] as num).toDouble(),
-        label: pin['label'] as String,
-        onTap: () => _deletePin(id, pin['label'] as String),
-      ));
+      markers.add(
+        OsmMapHelpers.pinMarker(
+          id: id,
+          lat: (pin['latitude'] as num).toDouble(),
+          lng: (pin['longitude'] as num).toDouble(),
+          label: pin['label'] as String,
+          onTap: () => _deletePin(id, pin['label'] as String),
+        ),
+      );
     }
     return markers;
   }
 
   void _fitBounds() {
-    final valid = _stops.where((s) =>
-        (s['latitude'] as num).toDouble() != 0 &&
-        (s['longitude'] as num).toDouble() != 0).toList();
+    final valid = _stops
+        .where(
+          (s) =>
+              (s['latitude'] as num).toDouble() != 0 &&
+              (s['longitude'] as num).toDouble() != 0,
+        )
+        .toList();
     if (valid.isEmpty || _mapController == null) return;
     double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
     for (final s in valid) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
-      minLat = min(minLat, lat); maxLat = max(maxLat, lat);
-      minLng = min(minLng, lng); maxLng = max(maxLng, lng);
+      minLat = min(minLat, lat);
+      maxLat = max(maxLat, lat);
+      minLng = min(minLng, lng);
+      maxLng = max(maxLng, lng);
     }
     // Include the live bus position so an off-route bus is never left off-screen.
     if (_busLocation != null) {
@@ -546,58 +604,69 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       minLng = min(minLng, _busLocation!.longitude);
       maxLng = max(maxLng, _busLocation!.longitude);
     }
-    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)),
-      80,
-    ));
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        80,
+      ),
+    );
   }
 
   Set<Marker> _buildMarkers() {
     if (_stopIcon == null) return {};
     final markers = <Marker>{};
     for (final s in _stops) {
-      final lat = (s['latitude']  as num).toDouble();
+      final lat = (s['latitude'] as num).toDouble();
       final lng = (s['longitude'] as num).toDouble();
       if (lat == 0 && lng == 0) continue;
       final isMyStop = s['id'] == _myStopId;
-      markers.add(Marker(
-        markerId: MarkerId(s['id'] as String),
-        position: LatLng(lat, lng),
-        icon: isMyStop ? _myStopIcon! : _stopIcon!,
-        anchor: const Offset(0.5, 0.5),
-        zIndexInt: isMyStop ? 3 : 0,
-        infoWindow: InfoWindow(title: s['name'] as String),
-      ));
+      markers.add(
+        Marker(
+          markerId: MarkerId(s['id'] as String),
+          position: LatLng(lat, lng),
+          icon: isMyStop ? _myStopIcon! : _stopIcon!,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: isMyStop ? 3 : 0,
+          infoWindow: InfoWindow(title: s['name'] as String),
+        ),
+      );
     }
     if (_busLocation != null && _busIcon != null) {
-      markers.add(Marker(
-        markerId: const MarkerId('bus'),
-        position: _busLocation!,
-        icon: _busIcon!,
-        anchor: const Offset(0.5, 0.5),
-        zIndexInt: 2,
-      ));
+      markers.add(
+        Marker(
+          markerId: const MarkerId('bus'),
+          position: _busLocation!,
+          icon: _busIcon!,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: 2,
+        ),
+      );
     }
     // Custom pins
     if (_pinIcon != null) {
       for (final pin in _customPins) {
         final id = pin['id'] as String;
-        markers.add(Marker(
-          markerId: MarkerId('pin_$id'),
-          position: LatLng(
-            (pin['latitude']  as num).toDouble(),
-            (pin['longitude'] as num).toDouble(),
+        markers.add(
+          Marker(
+            markerId: MarkerId('pin_$id'),
+            position: LatLng(
+              (pin['latitude'] as num).toDouble(),
+              (pin['longitude'] as num).toDouble(),
+            ),
+            icon: _pinIcon!,
+            anchor: const Offset(0.5, 0.5),
+            zIndexInt: 1,
+            infoWindow: InfoWindow(
+              title: pin['label'] as String,
+              snippet:
+                  'Notify ${pin['notify_minutes_before']} min before · Tap to remove',
+              onTap: () => _deletePin(id, pin['label'] as String),
+            ),
           ),
-          icon: _pinIcon!,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: 1,
-          infoWindow: InfoWindow(
-            title: pin['label'] as String,
-            snippet:
-                'Notify ${pin['notify_minutes_before']} min before · Tap to remove',
-            onTap: () => _deletePin(id, pin['label'] as String),
-          ),
-        ));
+        );
       }
     }
     return markers;
@@ -608,10 +677,18 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(
-          width: 40, height: 40,
+          width: 40,
+          height: 40,
           child: Center(
-            child: SvgPicture.asset(svgPath, width: 20, height: 20,
-                colorFilter: ColorFilter.mode(theme.colorScheme.onSurface, BlendMode.srcIn)),
+            child: SvgPicture.asset(
+              svgPath,
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(
+                theme.colorScheme.onSurface,
+                BlendMode.srcIn,
+              ),
+            ),
           ),
         ),
       );
@@ -634,7 +711,8 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   Widget build(BuildContext context) {
     // Prefer live GPS-derived progress; fall back to the trip's current_stop_index
     // when there is no live location or the route is unavailable.
-    final hasLiveGps = _hasActiveTrip && _busLocation != null && _liveStopIndex >= 0;
+    final hasLiveGps =
+        _hasActiveTrip && _busLocation != null && _liveStopIndex >= 0;
     final effectiveStopIndex = hasLiveGps ? _liveStopIndex : _busStopIndex;
     final myStopStatus = _myStopStatus();
 
@@ -689,8 +767,11 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(28),
                     elevation: 3,
-                    child: _mapBtn('assets/icons/gps.svg', _centerOnBus,
-                        Theme.of(context)),
+                    child: _mapBtn(
+                      'assets/icons/gps.svg',
+                      _centerOnBus,
+                      Theme.of(context),
+                    ),
                   ),
                 ),
                 DraggableScrollableSheet(
@@ -768,7 +849,8 @@ class _BottomSheet extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
@@ -781,9 +863,12 @@ class _BottomSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
               children: [
-                Text('Bus $busNumber',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  'Bus $busNumber',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 _LiveBadge(live: hasActiveTrip),
                 if (hasActiveTrip && busOffRoute) ...[
@@ -796,7 +881,8 @@ class _BottomSheet extends StatelessWidget {
                       ? '${stops.first['name']} → ${stops.last['name']}'
                       : '',
                   style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant),
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -806,17 +892,23 @@ class _BottomSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer
-                      .withValues(alpha: 0.45),
+                  color: theme.colorScheme.primaryContainer.withValues(
+                    alpha: 0.45,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.directions_bus_rounded,
-                        size: 18, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.directions_bus_rounded,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -838,17 +930,22 @@ class _BottomSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 16, 24),
             child: Column(
               children: List.generate(stops.length, (i) {
-                final s        = stops[i];
+                final s = stops[i];
                 final isMyStop = s['id'] == myStopId;
                 // "Bus here" when the bus is physically at the stop (or when we
                 // only have the trip index to go on); "Arriving" when live GPS
                 // shows it en route to this stop.
-                final isBusHere  = hasActiveTrip &&
-                    i == currentStopIndex && (busAtStop || !hasLiveGps);
-                final isArriving = hasActiveTrip &&
-                    hasLiveGps && !busAtStop && i == currentStopIndex;
-                final isPassed   = hasActiveTrip && i < currentStopIndex;
-                final isLast     = i == stops.length - 1;
+                final isBusHere =
+                    hasActiveTrip &&
+                    i == currentStopIndex &&
+                    (busAtStop || !hasLiveGps);
+                final isArriving =
+                    hasActiveTrip &&
+                    hasLiveGps &&
+                    !busAtStop &&
+                    i == currentStopIndex;
+                final isPassed = hasActiveTrip && i < currentStopIndex;
+                final isLast = i == stops.length - 1;
 
                 return _StopRow(
                   name: s['name'] as String,
@@ -878,15 +975,22 @@ class _LiveBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: live ? Colors.green.shade50 : theme.colorScheme.surfaceContainerHigh,
+        color: live
+            ? Colors.green.shade50
+            : theme.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: live ? Colors.green.shade400 : theme.colorScheme.outlineVariant),
+          color: live
+              ? Colors.green.shade400
+              : theme.colorScheme.outlineVariant,
+        ),
       ),
       child: Text(
         live ? '● LIVE' : 'No Trip',
         style: theme.textTheme.labelSmall?.copyWith(
-          color: live ? Colors.green.shade700 : theme.colorScheme.onSurfaceVariant,
+          color: live
+              ? Colors.green.shade700
+              : theme.colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -983,9 +1087,20 @@ class _StopRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (isBusHere) _tag('Bus here', const Color(0xFF3D3D8F), Colors.white),
-                  if (isArriving) _tag('Arriving', const Color(0xFF1565C0), const Color(0xFFE3F2FD)),
-                  if (isMyStop) _tag('Your stop', Colors.green.shade700, Colors.green.shade50),
+                  if (isBusHere)
+                    _tag('Bus here', const Color(0xFF3D3D8F), Colors.white),
+                  if (isArriving)
+                    _tag(
+                      'Arriving',
+                      const Color(0xFF1565C0),
+                      const Color(0xFFE3F2FD),
+                    ),
+                  if (isMyStop)
+                    _tag(
+                      'Your stop',
+                      Colors.green.shade700,
+                      Colors.green.shade50,
+                    ),
                 ],
               ),
             ),
@@ -998,18 +1113,26 @@ class _StopRow extends StatelessWidget {
   Widget _dot() {
     if (isBusHere || isArriving) {
       return Container(
-        width: 24, height: 24,
+        width: 24,
+        height: 24,
         decoration: const BoxDecoration(
-            color: Color(0xFF1565C0), shape: BoxShape.circle),
+          color: Color(0xFF1565C0),
+          shape: BoxShape.circle,
+        ),
         child: Center(
-          child: SvgPicture.asset('assets/icons/bus.svg', width: 14, height: 14,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+          child: SvgPicture.asset(
+            'assets/icons/bus.svg',
+            width: 14,
+            height: 14,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
         ),
       );
     }
     if (isMyStop) {
       return Container(
-        width: 20, height: 20,
+        width: 20,
+        height: 20,
         margin: const EdgeInsets.only(top: 2),
         decoration: BoxDecoration(
           color: Colors.green.shade50,
@@ -1019,7 +1142,8 @@ class _StopRow extends StatelessWidget {
       );
     }
     return Container(
-      width: 14, height: 14,
+      width: 14,
+      height: 14,
       margin: const EdgeInsets.only(top: 5),
       decoration: BoxDecoration(
         color: isPassed ? const Color(0xFF1A237E) : Colors.white,
@@ -1041,9 +1165,14 @@ class _StopRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: textColor.withValues(alpha: 0.4)),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10, color: textColor, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: textColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

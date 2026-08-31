@@ -18,23 +18,27 @@ class WebMapPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.map_outlined,
-                size: 56,
-                color: theme.colorScheme.primary.withValues(alpha: 0.6)),
+            Icon(
+              Icons.map_outlined,
+              size: 56,
+              color: theme.colorScheme.primary.withValues(alpha: 0.6),
+            ),
             const SizedBox(height: 16),
             Text(
               'Live map preview',
               textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'The interactive map runs in the mobile app. In this web demo, '
               'the route stops and live ETA are shown in the panel below.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

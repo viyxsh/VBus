@@ -21,13 +21,21 @@ Future<BitmapDescriptor> circleMarkerIcon({
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final r = size / 2;
-  canvas.drawCircle(Offset(r, r), r - strokeWidth / 2,
-      Paint()..color = fill..style = PaintingStyle.fill);
-  canvas.drawCircle(Offset(r, r), r - strokeWidth / 2,
-      Paint()
-        ..color = stroke
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth);
+  canvas.drawCircle(
+    Offset(r, r),
+    r - strokeWidth / 2,
+    Paint()
+      ..color = fill
+      ..style = PaintingStyle.fill,
+  );
+  canvas.drawCircle(
+    Offset(r, r),
+    r - strokeWidth / 2,
+    Paint()
+      ..color = stroke
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth,
+  );
   final picture = recorder.endRecording();
   final image = await picture.toImage(size.toInt(), size.toInt());
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -40,10 +48,21 @@ Future<BitmapDescriptor> busMarkerIconFallback(double size) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final r = size / 2;
-  canvas.drawCircle(Offset(r, r), r - 1.5,
-      Paint()..color = const Color(0xFF3D3D8F)..style = PaintingStyle.fill);
-  canvas.drawCircle(Offset(r, r), r - 1.5,
-      Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5);
+  canvas.drawCircle(
+    Offset(r, r),
+    r - 1.5,
+    Paint()
+      ..color = const Color(0xFF3D3D8F)
+      ..style = PaintingStyle.fill,
+  );
+  canvas.drawCircle(
+    Offset(r, r),
+    r - 1.5,
+    Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5,
+  );
   final tp = TextPainter(textDirection: ui.TextDirection.ltr);
   tp.text = TextSpan(
     text: String.fromCharCode(Icons.directions_bus_rounded.codePoint),
@@ -124,10 +143,21 @@ Future<BitmapDescriptor> customPinMarkerIcon(double size) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final r = size / 2;
-  canvas.drawCircle(Offset(r, r), r - 1.5,
-      Paint()..color = const Color(0xFFE65100)..style = PaintingStyle.fill);
-  canvas.drawCircle(Offset(r, r), r - 1.5,
-      Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5);
+  canvas.drawCircle(
+    Offset(r, r),
+    r - 1.5,
+    Paint()
+      ..color = const Color(0xFFE65100)
+      ..style = PaintingStyle.fill,
+  );
+  canvas.drawCircle(
+    Offset(r, r),
+    r - 1.5,
+    Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5,
+  );
   final tp = TextPainter(textDirection: ui.TextDirection.ltr);
   tp.text = TextSpan(
     text: String.fromCharCode(Icons.location_on_rounded.codePoint),
@@ -167,8 +197,7 @@ class BusIconWidget extends StatelessWidget {
           padding: EdgeInsets.all(size * 0.22),
           child: SvgPicture.asset(
             'assets/icons/bus.svg',
-            colorFilter:
-                const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
           ),
         ),
       ),

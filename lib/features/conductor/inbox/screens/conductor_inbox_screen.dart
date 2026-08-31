@@ -75,11 +75,14 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
     ref.read(chatRepositoryProvider).markRoomRead(room.id).then((_) {
       if (mounted) ref.invalidate(conductorInboxProvider);
     });
-    context.push('/chat/${room.id}', extra: {
-      'title': room.title,
-      'isBroadcast': room.isBroadcast,
-      'phone': room.phone,
-    });
+    context.push(
+      '/chat/${room.id}',
+      extra: {
+        'title': room.title,
+        'isBroadcast': room.isBroadcast,
+        'phone': room.phone,
+      },
+    );
   }
 
   void _showPassengerPicker(ConductorInbox inbox) {
@@ -88,7 +91,8 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => _PassengerPickerSheet(
         busId: inbox.busId,
         existingRooms: inbox.directs,
@@ -99,19 +103,21 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
   }
 
   Future<void> _openOrCreateDm(
-      String busId, String passengerId, String name, String? phone) async {
+    String busId,
+    String passengerId,
+    String name,
+    String? phone,
+  ) async {
     Navigator.pop(context);
     try {
-      final roomId = await ref.read(chatRepositoryProvider).openOrCreateDirectRoom(
-            busId: busId,
-            passengerId: passengerId,
-          );
+      final roomId = await ref
+          .read(chatRepositoryProvider)
+          .openOrCreateDirectRoom(busId: busId, passengerId: passengerId);
       if (mounted) {
-        context.push('/chat/$roomId', extra: {
-          'title': name,
-          'isBroadcast': false,
-          'phone': phone,
-        });
+        context.push(
+          '/chat/$roomId',
+          extra: {'title': name, 'isBroadcast': false, 'phone': phone},
+        );
         await _refresh();
       }
     } catch (e) {
@@ -162,170 +168,190 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
       body: ClipRect(
         child: Column(
           children: [
-          // ── Dark header ────────────────────────────────────────────────────
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF3D3D8F), Color(0xFF6C63D8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            // ── Dark header ────────────────────────────────────────────────────
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF3D3D8F), Color(0xFF6C63D8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-            ),
-            child: Column(
-              children: [
-              SafeArea(
-              bottom: false,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title row
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 12, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                  SafeArea(
+                    bottom: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              S.t(context, 'Inbox'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                height: 1.1,
-                              ),
-                            ),
-                            if (totalUnread > 0) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                '$totalUnread unread',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const Spacer(),
-                        // Search button
-                        IconButton(
-                          icon: SvgPicture.asset('assets/icons/search.svg',
-                              width: 20, height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                  Colors.white, BlendMode.srcIn)),
-                          style: IconButton.styleFrom(
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.15),
-                            shape: const CircleBorder(),
-                            padding: const EdgeInsets.all(10),
-                          ),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: Text(S.t(context, 'Search')),
-                                content: TextField(
-                                  autofocus: true,
-                                  decoration: InputDecoration(
-                                      hintText: S.t(context,
-                                          'Search conversations...')),
-                                  onChanged: (v) =>
-                                      setState(() => _search = v),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      setState(() => _search = '');
-                                      Navigator.pop(context);
-                                    },
-                                    child: Text(S.t(context, 'Clear')),
+                        // Title row
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 22, 12, 0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    S.t(context, 'Inbox'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.5,
+                                      height: 1.1,
+                                    ),
                                   ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text(S.t(context, 'Done')),
-                                  ),
+                                  if (totalUnread > 0) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '$totalUnread unread',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
-                            );
-                          },
+                              const Spacer(),
+                              // Search button
+                              IconButton(
+                                icon: SvgPicture.asset(
+                                  'assets/icons/search.svg',
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    Colors.white,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  shape: const CircleBorder(),
+                                  padding: const EdgeInsets.all(10),
+                                ),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      title: Text(S.t(context, 'Search')),
+                                      content: TextField(
+                                        autofocus: true,
+                                        decoration: InputDecoration(
+                                          hintText: S.t(
+                                            context,
+                                            'Search conversations...',
+                                          ),
+                                        ),
+                                        onChanged: (v) =>
+                                            setState(() => _search = v),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            setState(() => _search = '');
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text(S.t(context, 'Clear')),
+                                        ),
+                                        FilledButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: Text(S.t(context, 'Done')),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        // Filter pills
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                          child: Row(
+                            children: ['All', 'Unread', 'Students', 'Faculty']
+                                .map(
+                                  (f) => _filterPill(f, context, totalUnread),
+                                )
+                                .toList(),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  // Filter pills
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                    child: Row(
-                      children: ['All', 'Unread', 'Students', 'Faculty']
-                          .map((f) => _filterPill(f, context, totalUnread))
-                          .toList(),
-                    ),
-                  ),
+                  // 28px overlap allowance — the content card slides up into this zone
+                  const SizedBox(height: 28),
                 ],
               ),
             ),
-                // 28px overlap allowance — the content card slides up into this zone
-                const SizedBox(height: 28),
-              ],
-            ),
-          ),
 
-          // ── Chat list — overlaps header by 28px ────────────────────────────
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) => Transform.translate(
-                offset: const Offset(0, -28),
-                // OverflowBox makes the card 28px taller so that, once shifted
-                // up, it still reaches the bottom — otherwise its drop shadow
-                // floats as a band above the navbar.
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  minHeight: constraints.maxHeight + 28,
-                  maxHeight: constraints.maxHeight + 28,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? theme.colorScheme.surface : Colors.white,
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(24)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: isDark ? 0.30 : 0.12),
-                          blurRadius: 24,
-                          offset: const Offset(0, -6),
+            // ── Chat list — overlaps header by 28px ────────────────────────────
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Transform.translate(
+                  offset: const Offset(0, -28),
+                  // OverflowBox makes the card 28px taller so that, once shifted
+                  // up, it still reaches the bottom — otherwise its drop shadow
+                  // floats as a band above the navbar.
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: constraints.maxHeight + 28,
+                    maxHeight: constraints.maxHeight + 28,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? theme.colorScheme.surface
+                            : Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24),
                         ),
-                      ],
-                    ),
-                    child: inboxAsync.when(
-                      loading: () => const Center(child: LottieLoading()),
-                      error: (e, _) => _buildError(theme),
-                      data: (data) {
-                        final filtered = _filtered(data);
-                        return RefreshIndicator(
-                          onRefresh: _refresh,
-                          child: filtered.isEmpty
-                              ? _buildEmpty(theme)
-                              : ListView.builder(
-                                  padding: const EdgeInsets.only(
-                                      top: 14, bottom: 100),
-                                  itemCount: filtered.length,
-                                  itemBuilder: (_, i) =>
-                                      _buildTile(filtered[i], theme),
-                                ),
-                        );
-                      },
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.30 : 0.12,
+                            ),
+                            blurRadius: 24,
+                            offset: const Offset(0, -6),
+                          ),
+                        ],
+                      ),
+                      child: inboxAsync.when(
+                        loading: () => const Center(child: LottieLoading()),
+                        error: (e, _) => _buildError(theme),
+                        data: (data) {
+                          final filtered = _filtered(data);
+                          return RefreshIndicator(
+                            onRefresh: _refresh,
+                            child: filtered.isEmpty
+                                ? _buildEmpty(theme)
+                                : ListView.builder(
+                                    padding: const EdgeInsets.only(
+                                      top: 14,
+                                      bottom: 100,
+                                    ),
+                                    itemCount: filtered.length,
+                                    itemBuilder: (_, i) =>
+                                        _buildTile(filtered[i], theme),
+                                  ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
           ],
         ),
       ),
@@ -334,10 +360,15 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
               heroTag: 'conductor_inbox_fab',
               backgroundColor: const Color(0xFF3D3D8F),
               onPressed: () => _showPassengerPicker(inbox),
-              child: SvgPicture.asset('assets/icons/pencil.svg',
-                  width: 22, height: 22,
-                  colorFilter: const ColorFilter.mode(
-                      Colors.white, BlendMode.srcIn)),
+              child: SvgPicture.asset(
+                'assets/icons/pencil.svg',
+                width: 22,
+                height: 22,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
+              ),
             )
           : null,
     );
@@ -361,14 +392,16 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
           border: isSelected
               ? null
               : Border.all(
-                  color: Colors.white.withValues(alpha: 0.35), width: 1),
+                  color: Colors.white.withValues(alpha: 0.35),
+                  width: 1,
+                ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.16),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -379,8 +412,7 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
               S.t(ctx, label),
               style: TextStyle(
                 color: isSelected ? const Color(0xFF3D3D8F) : Colors.white,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 fontSize: 13,
                 letterSpacing: 0.1,
               ),
@@ -388,8 +420,7 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
             if (unread > 0) ...[
               const SizedBox(width: 6),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? const Color(0xFF3D3D8F)
@@ -436,28 +467,40 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 50, height: 50,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
-                        color: avatarColor, shape: BoxShape.circle),
+                      color: avatarColor,
+                      shape: BoxShape.circle,
+                    ),
                     child: Center(
                       child: room.isBroadcast
-                          ? SvgPicture.asset('assets/icons/passengers.svg',
-                              width: 24, height: 24,
+                          ? SvgPicture.asset(
+                              'assets/icons/passengers.svg',
+                              width: 24,
+                              height: 24,
                               colorFilter: const ColorFilter.mode(
-                                  Colors.white, BlendMode.srcIn))
-                          : Text(initial,
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            )
+                          : Text(
+                              initial,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
-                              )),
+                              ),
+                            ),
                     ),
                   ),
                   if (room.isBroadcast)
                     Positioned(
-                      bottom: 0, right: 0,
+                      bottom: 0,
+                      right: 0,
                       child: Container(
-                        width: 13, height: 13,
+                        width: 13,
+                        height: 13,
                         decoration: BoxDecoration(
                           color: Colors.green.shade500,
                           shape: BoxShape.circle,
@@ -489,8 +532,8 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                             room.isBroadcast
                                 ? '${S.t(context, 'Bus')} ${room.title}'
                                 : room.title.isEmpty
-                                    ? S.t(context, 'Passenger')
-                                    : room.title,
+                                ? S.t(context, 'Passenger')
+                                : room.title,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: hasUnread
                                   ? FontWeight.w700
@@ -533,8 +576,7 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                                     children: [
                                       if (room.lastIsMe)
                                         TextSpan(
-                                          text:
-                                              '${S.t(context, 'You')}: ',
+                                          text: '${S.t(context, 'You')}: ',
                                           style: TextStyle(
                                             fontSize: 13,
                                             color: theme.colorScheme.primary
@@ -548,9 +590,10 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                                           fontSize: 13,
                                           color: hasUnread
                                               ? theme.colorScheme.onSurface
-                                                  .withValues(alpha: 0.85)
-                                              : theme.colorScheme
-                                                  .onSurfaceVariant,
+                                                    .withValues(alpha: 0.85)
+                                              : theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
                                           fontWeight: hasUnread
                                               ? FontWeight.w500
                                               : FontWeight.w400,
@@ -576,11 +619,14 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                           Container(
                             constraints: const BoxConstraints(minWidth: 20),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: const BoxDecoration(
                               color: Color(0xFF3D3D8F),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(10)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(10),
+                              ),
                             ),
                             child: Text(
                               room.unreadCount > 99
@@ -600,20 +646,26 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
                           Container(
                             margin: const EdgeInsets.only(left: 4),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 2),
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: room.userType == 'faculty'
-                                  ? const Color(0xFFE65100)
-                                      .withValues(alpha: 0.08)
-                                  : const Color(0xFF3D3D8F)
-                                      .withValues(alpha: 0.08),
+                                  ? const Color(
+                                      0xFFE65100,
+                                    ).withValues(alpha: 0.08)
+                                  : const Color(
+                                      0xFF3D3D8F,
+                                    ).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
                                 color: room.userType == 'faculty'
-                                    ? const Color(0xFFE65100)
-                                        .withValues(alpha: 0.3)
-                                    : const Color(0xFF3D3D8F)
-                                        .withValues(alpha: 0.3),
+                                    ? const Color(
+                                        0xFFE65100,
+                                      ).withValues(alpha: 0.3)
+                                    : const Color(
+                                        0xFF3D3D8F,
+                                      ).withValues(alpha: 0.3),
                               ),
                             ),
                             child: Text(
@@ -643,20 +695,27 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.inbox_outlined,
-            size: 56, color: theme.colorScheme.outlineVariant),
+        Icon(
+          Icons.inbox_outlined,
+          size: 56,
+          color: theme.colorScheme.outlineVariant,
+        ),
         const SizedBox(height: 12),
         Text(
           _filter == 'Unread'
               ? S.t(context, 'All caught up!')
               : S.t(context, 'No conversations yet'),
-          style: theme.textTheme.titleMedium
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         if (_filter == 'Unread')
-          Text(S.t(context, 'No unread messages'),
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outlineVariant)),
+          Text(
+            S.t(context, 'No unread messages'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outlineVariant,
+            ),
+          ),
       ],
     ),
   );
@@ -665,15 +724,17 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.error_outline,
-            size: 48, color: theme.colorScheme.error),
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
         const SizedBox(height: 12),
-        Text(S.t(context, 'Failed to load inbox'),
-            style: theme.textTheme.titleSmall),
+        Text(
+          S.t(context, 'Failed to load inbox'),
+          style: theme.textTheme.titleSmall,
+        ),
         const SizedBox(height: 16),
         FilledButton(
-            onPressed: () => ref.invalidate(conductorInboxProvider),
-            child: Text(S.t(context, 'Retry'))),
+          onPressed: () => ref.invalidate(conductorInboxProvider),
+          child: Text(S.t(context, 'Retry')),
+        ),
       ],
     ),
   );
@@ -681,13 +742,17 @@ class _ConductorInboxScreenState extends ConsumerState<ConductorInboxScreen> {
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
     final local = dt.toLocal();
-    if (local.day == now.day && local.month == now.month &&
+    if (local.day == now.day &&
+        local.month == now.month &&
         local.year == now.year) {
       return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     }
     final diff = now.difference(local).inDays;
     if (diff == 1) return S.t(context, 'Yesterday');
-    if (diff < 7) return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][local.weekday - 1];
+    if (diff < 7) {
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][local.weekday -
+          1];
+    }
     return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${(local.year % 100).toString().padLeft(2, '0')}';
   }
 }
@@ -698,7 +763,7 @@ class _PassengerPickerSheet extends ConsumerStatefulWidget {
   final String busId;
   final List<InboxRoom> existingRooms;
   final void Function(String passengerId, String name, String? phone)
-      onSelected;
+  onSelected;
 
   const _PassengerPickerSheet({
     required this.busId,
@@ -728,7 +793,12 @@ class _PassengerPickerSheetState extends ConsumerState<_PassengerPickerSheet> {
       final data = await ref
           .read(busRepositoryProvider)
           .approvedPassengers(widget.busId);
-      if (mounted) setState(() { _passengers = data; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _passengers = data;
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
@@ -739,8 +809,13 @@ class _PassengerPickerSheetState extends ConsumerState<_PassengerPickerSheet> {
     final theme = Theme.of(context);
     final filtered = _search.isEmpty
         ? _passengers
-        : _passengers.where((p) =>
-            (p['name'] as String).toLowerCase().contains(_search.toLowerCase())).toList();
+        : _passengers
+              .where(
+                (p) => (p['name'] as String).toLowerCase().contains(
+                  _search.toLowerCase(),
+                ),
+              )
+              .toList();
 
     return DraggableScrollableSheet(
       expand: false,
@@ -750,97 +825,135 @@ class _PassengerPickerSheetState extends ConsumerState<_PassengerPickerSheet> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                Text(S.t(context, 'New Message'),
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context)),
-              ]),
-              const SizedBox(height: 12),
-              TextField(
-                onChanged: (v) => setState(() => _search = v),
-                decoration: InputDecoration(
-                  hintText: S.t(context, 'Search passengers...'),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SvgPicture.asset('assets/icons/search.svg',
-                        width: 16, height: 16),
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerLow,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 0),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      S.t(context, 'New Message'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
-              ),
-            ]),
+                const SizedBox(height: 12),
+                TextField(
+                  onChanged: (v) => setState(() => _search = v),
+                  decoration: InputDecoration(
+                    hintText: S.t(context, 'Search passengers...'),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: SvgPicture.asset(
+                        'assets/icons/search.svg',
+                        width: 16,
+                        height: 16,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerLow,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const Divider(height: 16),
           Expanded(
             child: _loading
                 ? const Center(child: LottieLoading())
                 : filtered.isEmpty
-                    ? Center(child: Text(S.t(context, 'No passengers'),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)))
-                    : ListView.separated(
-                        controller: controller,
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => Divider(
-                          height: 1, indent: 72,
-                          color: theme.colorScheme.outlineVariant
-                              .withValues(alpha: 0.4),
-                        ),
-                        itemBuilder: (_, i) {
-                          final p = filtered[i];
-                          final name = p['name'] as String;
-                          final phone = p['phone'] as String?;
-                          final userType = p['user_type'] as String?;
-                          final hasRoom = widget.existingRooms
-                              .any((r) => r.title == name && !r.isBroadcast);
-                          final color = _avatarColor(name);
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: color,
-                              child: Text(name[0].toUpperCase(),
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700)),
-                            ),
-                            title: Text(name,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600)),
-                            subtitle: Text(
-                              userType == 'faculty' ? S.t(context, 'Faculty') : S.t(context, 'Student'),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                            trailing: hasRoom
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(S.t(context, 'Open'),
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                                color: theme.colorScheme.primary)),
-                                  )
-                                : Icon(Icons.chevron_right_rounded,
-                                    color: theme.colorScheme.onSurfaceVariant),
-                            onTap: () => widget.onSelected(
-                                p['id'] as String, name, phone),
-                          );
-                        },
+                ? Center(
+                    child: Text(
+                      S.t(context, 'No passengers'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
+                    ),
+                  )
+                : ListView.separated(
+                    controller: controller,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      indent: 72,
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.4,
+                      ),
+                    ),
+                    itemBuilder: (_, i) {
+                      final p = filtered[i];
+                      final name = p['name'] as String;
+                      final phone = p['phone'] as String?;
+                      final userType = p['user_type'] as String?;
+                      final hasRoom = widget.existingRooms.any(
+                        (r) => r.title == name && !r.isBroadcast,
+                      );
+                      final color = _avatarColor(name);
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: color,
+                          child: Text(
+                            name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          userType == 'faculty'
+                              ? S.t(context, 'Faculty')
+                              : S.t(context, 'Student'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: hasRoom
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  S.t(context, 'Open'),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                Icons.chevron_right_rounded,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                        onTap: () =>
+                            widget.onSelected(p['id'] as String, name, phone),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

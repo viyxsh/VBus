@@ -47,10 +47,22 @@ class AttendanceRepository {
 
   // Demo roster names, shown on the conductor attendance page in demo mode.
   static const _demoNames = [
-    'Aarav Sharma', 'Diya Patel', 'Kabir Reddy', 'Ananya Verma',
-    'Rohan Mehta', 'Isha Kulkarni', 'Vihaan Tiwari', 'Sara Nair',
-    'Arjun Desai', 'Myra Joshi', 'Aditya Rao', 'Tara Menon',
-    'Krishna Iyer', 'Riya Gupta', 'Dev Malhotra', 'Anvi Shah',
+    'Aarav Sharma',
+    'Diya Patel',
+    'Kabir Reddy',
+    'Ananya Verma',
+    'Rohan Mehta',
+    'Isha Kulkarni',
+    'Vihaan Tiwari',
+    'Sara Nair',
+    'Arjun Desai',
+    'Myra Joshi',
+    'Aditya Rao',
+    'Tara Menon',
+    'Krishna Iyer',
+    'Riya Gupta',
+    'Dev Malhotra',
+    'Anvi Shah',
   ];
 
   /// All attendance rows for a trip, joined with passenger and stop info.
@@ -84,11 +96,14 @@ class AttendanceRepository {
         .eq('id', busId)
         .single();
 
-    final stops = List<Map<String, dynamic>>.from(await supabase
-        .from(SupabaseConstants.busStops)
-        .select('id, name, stop_order')
-        .eq('route_id', bus['route_id'] as String)
-        .order('stop_order') as List);
+    final stops = List<Map<String, dynamic>>.from(
+      await supabase
+              .from(SupabaseConstants.busStops)
+              .select('id, name, stop_order')
+              .eq('route_id', bus['route_id'] as String)
+              .order('stop_order')
+          as List,
+    );
     if (stops.isEmpty) return [];
 
     final result = <Map<String, dynamic>>[];
@@ -112,10 +127,7 @@ class AttendanceRepository {
         'state': state,
         'scanned_at': null,
         'passengers': {'name': _demoNames[j]},
-        'bus_stops': {
-          'name': stop['name'],
-          'stop_order': stop['stop_order'],
-        },
+        'bus_stops': {'name': stop['name'], 'stop_order': stop['stop_order']},
       });
     }
     return result;
@@ -128,8 +140,10 @@ class AttendanceRepository {
   }) async {
     if (AppConfig.demoMode) {
       // Reuse the seeded live trip instead of creating one.
-      final existing =
-          await currentOrLastTrip(busId: busId, conductorId: conductorId);
+      final existing = await currentOrLastTrip(
+        busId: busId,
+        conductorId: conductorId,
+      );
       if (existing != null) return existing;
     }
     final today = DateTime.now().toIso8601String().substring(0, 10);
@@ -167,9 +181,7 @@ class AttendanceRepository {
         .select('passenger_id')
         .eq('bus_id', busId)
         .eq('booking_date', today);
-    return (data as List)
-        .map((r) => r['passenger_id'] as String)
-        .toSet();
+    return (data as List).map((r) => r['passenger_id'] as String).toSet();
   }
 
   /// Creates attendance records for a trip's roster.
@@ -185,16 +197,20 @@ class AttendanceRepository {
 
     final bookers = await seatBookerIdsToday(busId);
 
-    await supabase.from(SupabaseConstants.attendance).insert(
+    await supabase
+        .from(SupabaseConstants.attendance)
+        .insert(
           roster
-              .map((p) => {
-                    'trip_id': tripId,
-                    'passenger_id': p['id'],
-                    'stop_id': p['stop_id'],
-                    'state': AttendanceMachine.initialState(
-                      hasSeatBooking: bookers.contains(p['id']),
-                    ).name,
-                  })
+              .map(
+                (p) => {
+                  'trip_id': tripId,
+                  'passenger_id': p['id'],
+                  'stop_id': p['stop_id'],
+                  'state': AttendanceMachine.initialState(
+                    hasSeatBooking: bookers.contains(p['id']),
+                  ).name,
+                },
+              )
               .toList(),
         );
   }
@@ -227,16 +243,21 @@ class AttendanceRepository {
         .eq('trip_id', tripId)
         .eq('state', 'waiting');
 
-    await supabase.from(SupabaseConstants.trips).update({
-      'state': 'ended',
-      'ended_at': DateTime.now().toIso8601String(),
-    }).eq('id', tripId);
+    await supabase
+        .from(SupabaseConstants.trips)
+        .update({
+          'state': 'ended',
+          'ended_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', tripId);
   }
 
   /// Finds a passenger on a bus by their VIT registration number.
   /// Finds a passenger on the given bus by registration number.
   Future<Map<String, dynamic>?> findPassengerByReg(
-      String regNumber, String busId) async {
+    String regNumber,
+    String busId,
+  ) async {
     final passenger = await supabase
         .from(SupabaseConstants.passengers)
         .select('id, name')
@@ -259,9 +280,12 @@ class AttendanceRepository {
 
   Future<void> markPresent(String attendanceId) async {
     if (AppConfig.demoMode) return; // live prototype: simulate the scan only
-    await supabase.from(SupabaseConstants.attendance).update({
-      'state': 'present',
-      'scanned_at': DateTime.now().toIso8601String(),
-    }).eq('id', attendanceId);
+    await supabase
+        .from(SupabaseConstants.attendance)
+        .update({
+          'state': 'present',
+          'scanned_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', attendanceId);
   }
 }

@@ -10,11 +10,7 @@ class SeatInfo {
   bool isMyBooking = false;
   bool isReserved = false; // permanently reserved for someone
 
-  SeatInfo({
-    required this.number,
-    required this.label,
-    required this.type,
-  });
+  SeatInfo({required this.number, required this.label, required this.type});
 }
 
 /// Human label for a seat number given the bus layout: left column

@@ -22,7 +22,8 @@ class PassengerSeatScreen extends ConsumerStatefulWidget {
   const PassengerSeatScreen({super.key});
 
   @override
-  ConsumerState<PassengerSeatScreen> createState() => _PassengerSeatScreenState();
+  ConsumerState<PassengerSeatScreen> createState() =>
+      _PassengerSeatScreenState();
 }
 
 class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
@@ -30,10 +31,10 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   String _busNumber = '';
   String _busId = '';
   String _userType = 'student';
-  int _leftSeats = 0;               // total physical left-column seats
-  int _studentCount = 0;            // total right + back seats
-  int _facultyRowsLeft = 0;         // top N left rows = yellow
-  int _facultyRowsRight = 0;        // top N right rows = yellow
+  int _leftSeats = 0; // total physical left-column seats
+  int _studentCount = 0; // total right + back seats
+  int _facultyRowsLeft = 0; // top N left rows = yellow
+  int _facultyRowsRight = 0; // top N right rows = yellow
 
   // Seat state
   List<SeatInfo> _seats = [];
@@ -46,7 +47,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   bool _showLegend = false;
 
   // Reservation state
-  SeatReservation? _reservation;      // approved active reservation
+  SeatReservation? _reservation; // approved active reservation
   SeatReservation? _pendingReservation; // pending reservation request
   bool _reservingSeat = false;
 
@@ -55,7 +56,9 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   // ─── Booking window ────────────────────────────────────────────────────────
 
   BookingState get _bookingState {
-    if (AppConfig.demoMode) return BookingState.open; // always open for the demo
+    if (AppConfig.demoMode) {
+      return BookingState.open; // always open for the demo
+    }
     return BookingWindow.isOpen(DateTime.now())
         ? BookingState.open
         : BookingState.locked;
@@ -88,18 +91,20 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     try {
       final profile = await ref.read(seatRepositoryProvider).seatBusInfo();
 
-      _busId      = profile['bus_id']    as String;
-      _userType   = profile['user_type'] as String;
-      final bus   = profile['buses']     as Map;
+      _busId = profile['bus_id'] as String;
+      _userType = profile['user_type'] as String;
+      final bus = profile['buses'] as Map;
 
-      _busNumber       = bus['bus_number']                as String;
-      _leftSeats       = (bus['left_seats']               as num).toInt();
-      _studentCount    = (bus['student_seats']            as num).toInt();
-      _facultyRowsLeft = (bus['faculty_reserved_rows_left']  as num).toInt();
-      _facultyRowsRight= (bus['faculty_reserved_rows_right'] as num).toInt();
+      _busNumber = bus['bus_number'] as String;
+      _leftSeats = (bus['left_seats'] as num).toInt();
+      _studentCount = (bus['student_seats'] as num).toInt();
+      _facultyRowsLeft = (bus['faculty_reserved_rows_left'] as num).toInt();
+      _facultyRowsRight = (bus['faculty_reserved_rows_right'] as num).toInt();
 
-      debugPrint('[PASS_SEAT] Initial load: busId=$_busId '
-          'facultyRowsLeft=$_facultyRowsLeft facultyRowsRight=$_facultyRowsRight');
+      debugPrint(
+        '[PASS_SEAT] Initial load: busId=$_busId '
+        'facultyRowsLeft=$_facultyRowsLeft facultyRowsRight=$_facultyRowsRight',
+      );
 
       await _loadBookings(ref.read(seatRepositoryProvider).currentUserId);
       _subscribeBusConfig();
@@ -132,9 +137,11 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
     final newLeft = (newData['faculty_reserved_rows_left'] as num?)?.toInt();
     final newRight = (newData['faculty_reserved_rows_right'] as num?)?.toInt();
-    debugPrint('[PASS_SEAT] Realtime bus config changed: '
-        'newLeft=$newLeft newRight=$newRight '
-        'currentLeft=$_facultyRowsLeft currentRight=$_facultyRowsRight');
+    debugPrint(
+      '[PASS_SEAT] Realtime bus config changed: '
+      'newLeft=$newLeft newRight=$newRight '
+      'currentLeft=$_facultyRowsLeft currentRight=$_facultyRowsRight',
+    );
     if (newLeft == null || newRight == null) return;
     if (newLeft == _facultyRowsLeft && newRight == _facultyRowsRight) return;
 
@@ -162,12 +169,16 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
             await seatRepo.clearMyBooking(_bookingDateStr);
           } catch (_) {}
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(_userType == 'student'
-                  ? 'Your seat is now reserved for faculty. Please choose a student seat.'
-                  : 'Your seat is now a student seat. Please choose a faculty seat.'),
-              backgroundColor: Colors.orange.shade700,
-            ));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  _userType == 'student'
+                      ? 'Your seat is now reserved for faculty. Please choose a student seat.'
+                      : 'Your seat is now a student seat. Please choose a faculty seat.',
+                ),
+                backgroundColor: Colors.orange.shade700,
+              ),
+            );
           }
         }
       }
@@ -179,14 +190,13 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
   Future<void> _loadBookings(String userId) async {
     final seatRepo = ref.read(seatRepositoryProvider);
-    final resRepo  = ref.read(seatReservationRepositoryProvider);
+    final resRepo = ref.read(seatReservationRepositoryProvider);
     final bookings = await seatRepo.bookingsForDate(_busId, _bookingDateStr);
 
     // Load active + pending reservations
-    final activeReservations =
-        await resRepo.activeReservationsForBus(_busId);
-    final myReservation   = await resRepo.myActiveReservation();
-    final myPending       = await resRepo.myPendingReservation();
+    final activeReservations = await resRepo.activeReservationsForBus(_busId);
+    final myReservation = await resRepo.myActiveReservation();
+    final myPending = await resRepo.myPendingReservation();
 
     final seats = _buildSeats();
     int? confirmed;
@@ -194,12 +204,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     // Mark daily bookings
     for (final b in bookings as List) {
       final seatNum = b['seat_number'] as int;
-      final pid     = b['passenger_id'] as String;
-      final name    = (b['passengers'] as Map?)?['name'] as String? ?? 'Unknown';
+      final pid = b['passenger_id'] as String;
+      final name = (b['passengers'] as Map?)?['name'] as String? ?? 'Unknown';
 
       final idx = seats.indexWhere((s) => s.number == seatNum);
       if (idx == -1) continue;
-      seats[idx].bookedBy    = name;
+      seats[idx].bookedBy = name;
       seats[idx].isMyBooking = pid == userId;
       if (pid == userId) confirmed = seatNum;
     }
@@ -243,12 +253,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
     if (mounted) {
       setState(() {
-        _seats              = seats;
-        _confirmedSeat      = confirmed;
-        _selectedSeat       = confirmed;
-        _reservation        = myReservation;
+        _seats = seats;
+        _confirmedSeat = confirmed;
+        _selectedSeat = confirmed;
+        _reservation = myReservation;
         _pendingReservation = myPending;
-        _loading            = false;
+        _loading = false;
       });
     }
   }
@@ -268,33 +278,39 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     // Left column — 2 seats per row
     final facultyLeftSeats = _facultyRowsLeft * 2;
     for (int i = 1; i <= _leftSeats; i++) {
-      seats.add(SeatInfo(
-        number: i,
-        label:  'L$i',
-        type:   i <= facultyLeftSeats ? SeatType.faculty : SeatType.student,
-      ));
+      seats.add(
+        SeatInfo(
+          number: i,
+          label: 'L$i',
+          type: i <= facultyLeftSeats ? SeatType.faculty : SeatType.student,
+        ),
+      );
     }
 
     // Right column — 3 seats per row, last 6 = back row
-    final backCount  = min(6, _studentCount);
+    final backCount = min(6, _studentCount);
     final rightCount = _studentCount - backCount;
     final facultyRightSeats = _facultyRowsRight * 3;
 
     for (int i = 1; i <= rightCount; i++) {
-      seats.add(SeatInfo(
-        number: _leftSeats + i,
-        label:  'R$i',
-        type:   i <= facultyRightSeats ? SeatType.faculty : SeatType.student,
-      ));
+      seats.add(
+        SeatInfo(
+          number: _leftSeats + i,
+          label: 'R$i',
+          type: i <= facultyRightSeats ? SeatType.faculty : SeatType.student,
+        ),
+      );
     }
 
     // Back row — always student
     for (int i = 1; i <= backCount; i++) {
-      seats.add(SeatInfo(
-        number: _leftSeats + rightCount + i,
-        label:  'B$i',
-        type:   SeatType.student,
-      ));
+      seats.add(
+        SeatInfo(
+          number: _leftSeats + rightCount + i,
+          label: 'B$i',
+          type: SeatType.student,
+        ),
+      );
     }
 
     return seats;
@@ -307,18 +323,22 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
     // Must tap Edit first when already booked
     if (_confirmedSeat != null && !_editing) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Tap "Edit" to change your seat'),
-        duration: Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tap "Edit" to change your seat'),
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
     if (seat.bookedBy != null && !seat.isMyBooking) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Booked by ${seat.bookedBy}'),
-        duration: const Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Booked by ${seat.bookedBy}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
@@ -327,12 +347,16 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
         (_userType == 'student' && seat.type == SeatType.student);
 
     if (!canBook) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(_userType == 'faculty'
-            ? 'Faculty can only book yellow seats'
-            : 'Students can only book red seats'),
-        duration: const Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _userType == 'faculty'
+                ? 'Faculty can only book yellow seats'
+                : 'Students can only book red seats',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
@@ -344,7 +368,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   Future<void> _confirm() async {
     if (_submitting) return;
     setState(() => _submitting = true);
-    final seatBeingBooked = _selectedSeat; // capture before _loadBookings resets state
+    final seatBeingBooked =
+        _selectedSeat; // capture before _loadBookings resets state
     try {
       final seatRepo = ref.read(seatRepositoryProvider);
       final userId = seatRepo.currentUserId;
@@ -364,7 +389,9 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
             if (mounted) {
               setState(() => _selectedSeat = null);
               await showErrorOverlay(
-                  context, 'That seat was just taken. Please choose another.');
+                context,
+                'That seat was just taken. Please choose another.',
+              );
             }
             return;
           }
@@ -382,7 +409,9 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       }
     } on PostgrestException catch (e) {
       debugPrint('[SEAT] confirm error: ${e.message}');
-      if (mounted) await showErrorOverlay(context, 'Booking failed: ${e.message}');
+      if (mounted) {
+        await showErrorOverlay(context, 'Booking failed: ${e.message}');
+      }
     } catch (e) {
       debugPrint('[SEAT] confirm error: $e');
       if (mounted) await showErrorOverlay(context, friendlyError(e));
@@ -404,19 +433,24 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       final pending = await resRepo.myPendingReservation();
       if (mounted) {
         setState(() => _pendingReservation = pending);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text(
-              'Reservation request sent to the conductor for approval.'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Reservation request sent to the conductor for approval.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[PASS_SEAT] reserve error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed to send reservation request.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send reservation request.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _reservingSeat = false);
@@ -432,10 +466,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       final seatRepo = ref.read(seatRepositoryProvider);
       await _loadBookings(seatRepo.currentUserId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Reservation cancelled.'),
-          backgroundColor: Colors.orange,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Reservation cancelled.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[PASS_SEAT] cancel reservation error: $e');
@@ -450,7 +486,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => const BookingHistorySheet(),
     );
   }
@@ -469,14 +506,16 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
         actions: [
           IconButton(
             tooltip: _showLegend ? 'Hide legend' : 'Show legend',
-            icon: Text('?',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: _showLegend
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                )),
+            icon: Text(
+              '?',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: _showLegend
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             onPressed: () => setState(() => _showLegend = !_showLegend),
           ),
           IconButton(
@@ -508,7 +547,6 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     );
   }
 
-
   static const _legendTileWidth = 120.0;
 
   Widget _buildLegend(ThemeData theme) {
@@ -533,11 +571,21 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
           children: [
             SizedBox(
               width: _legendTileWidth,
-              child: _legendTile(theme, theme.colorScheme.outline, 'Taken', isX: true),
+              child: _legendTile(
+                theme,
+                theme.colorScheme.outline,
+                'Taken',
+                isX: true,
+              ),
             ),
             SizedBox(
               width: _legendTileWidth,
-              child: _legendTile(theme, _facultyColor, 'Reserved', isStar: true),
+              child: _legendTile(
+                theme,
+                _facultyColor,
+                'Reserved',
+                isStar: true,
+              ),
             ),
           ],
         ),
@@ -545,8 +593,13 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     );
   }
 
-  Widget _legendTile(ThemeData theme, Color color, String label,
-      {bool isX = false, bool isStar = false}) {
+  Widget _legendTile(
+    ThemeData theme,
+    Color color,
+    String label, {
+    bool isX = false,
+    bool isStar = false,
+  }) {
     return Row(
       children: [
         Container(
@@ -559,8 +612,8 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
           child: isX
               ? Icon(Icons.close, size: 14, color: color)
               : isStar
-                  ? Icon(Icons.star, size: 14, color: color)
-                  : null,
+              ? Icon(Icons.star, size: 14, color: color)
+              : null,
         ),
         const SizedBox(width: 6),
         Text(label, style: theme.textTheme.bodySmall),
@@ -577,9 +630,9 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   static const _rightOffset = _rowStride / 2;
 
   Widget _buildBusLayout(ThemeData theme) {
-    final leftSeats  = _seats.where((s) => s.label.startsWith('L')).toList();
+    final leftSeats = _seats.where((s) => s.label.startsWith('L')).toList();
     final rightSeats = _seats.where((s) => s.label.startsWith('R')).toList();
-    final backSeats  = _seats.where((s) => s.label.startsWith('B')).toList();
+    final backSeats = _seats.where((s) => s.label.startsWith('B')).toList();
 
     // Build left column widgets (pairs of 2).
     // The last pair (e.g. L17/L18) sits near the back door — add a gap before it.
@@ -596,17 +649,19 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
       if (i == leftRows.length - 1 && leftRows.length > 2) {
         leftWidgets.add(const SizedBox(height: _rightOffset)); // back-door gap
       }
-      leftWidgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSeat(leftRows[i][0], theme),
-            const SizedBox(width: 8),
-            if (leftRows[i].length > 1) _buildSeat(leftRows[i][1], theme),
-          ],
+      leftWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSeat(leftRows[i][0], theme),
+              const SizedBox(width: 8),
+              if (leftRows[i].length > 1) _buildSeat(leftRows[i][1], theme),
+            ],
+          ),
         ),
-      ));
+      );
     }
 
     // Build right column widgets (rows of 3)
@@ -617,10 +672,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
         if (rowChildren.isNotEmpty) rowChildren.add(const SizedBox(width: 8));
         rowChildren.add(_buildSeat(rightSeats[i + j], theme));
       }
-      rightWidgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(mainAxisSize: MainAxisSize.min, children: rowChildren),
-      ));
+      rightWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(mainAxisSize: MainAxisSize.min, children: rowChildren),
+        ),
+      );
     }
 
     return Column(
@@ -647,10 +704,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: backSeats
-                .map((s) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _buildSeat(s, theme),
-                    ))
+                .map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _buildSeat(s, theme),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -661,7 +720,7 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   Widget _buildSeat(SeatInfo seat, ThemeData theme) {
     final isFaculty = seat.type == SeatType.faculty;
     final baseColor = isFaculty ? _facultyColor : _studentColor;
-    final isTaken   = seat.bookedBy != null && !seat.isMyBooking;
+    final isTaken = seat.bookedBy != null && !seat.isMyBooking;
     final isSelected = _selectedSeat == seat.number;
 
     final Color borderColor;
@@ -670,24 +729,34 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
 
     if (isTaken) {
       borderColor = theme.colorScheme.outline;
-      bgColor     = theme.colorScheme.surfaceContainerHigh;
-      child       = seat.isReserved
+      bgColor = theme.colorScheme.surfaceContainerHigh;
+      child = seat.isReserved
           ? Icon(Icons.star, size: 14, color: _facultyColor)
           : Icon(Icons.close, size: 14, color: theme.colorScheme.outline);
     } else if (isSelected) {
       borderColor = seat.isReserved ? _facultyColor : baseColor;
-      bgColor     = seat.isReserved ? _facultyColor : baseColor;
+      bgColor = seat.isReserved ? _facultyColor : baseColor;
       child = seat.isReserved
           ? Icon(Icons.star, size: 16, color: Colors.white)
-          : Text(seat.label,
+          : Text(
+              seat.label,
               style: const TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white));
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            );
     } else {
       borderColor = baseColor;
-      bgColor     = Colors.transparent;
-      child       = Text(seat.label,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w500, color: baseColor));
+      bgColor = Colors.transparent;
+      child = Text(
+        seat.label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          color: baseColor,
+        ),
+      );
     }
 
     return GestureDetector(
@@ -706,21 +775,25 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
   }
 
   Widget _buildBottomBar(ThemeData theme) {
-    final isOpen  = _bookingState == BookingState.open;
+    final isOpen = _bookingState == BookingState.open;
     final confirmedLabel = _confirmedSeat != null
         ? _seats.firstWhere((s) => s.number == _confirmedSeat!).label
         : 'None';
     final isFaculty = _userType == 'faculty';
-    final canReserve = isFaculty && _confirmedSeat != null &&
-        _reservation == null && _pendingReservation == null;
+    final canReserve =
+        isFaculty &&
+        _confirmedSeat != null &&
+        _reservation == null &&
+        _pendingReservation == null;
 
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          border:
-              Border(top: BorderSide(color: theme.colorScheme.outlineVariant)),
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.outlineVariant),
+          ),
         ),
         child: Row(
           children: [
@@ -734,8 +807,9 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
                     style: theme.textTheme.titleMedium,
                     children: [
                       const TextSpan(
-                          text: 'Seat: ',
-                          style: TextStyle(fontWeight: FontWeight.w400)),
+                        text: 'Seat: ',
+                        style: TextStyle(fontWeight: FontWeight.w400),
+                      ),
                       TextSpan(
                         text: confirmedLabel,
                         style: const TextStyle(fontWeight: FontWeight.w700),
@@ -744,15 +818,21 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
                   ),
                 ),
                 if (_reservation != null)
-                  Text('Permanently reserved',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                          color: _facultyColor,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Permanently reserved',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: _facultyColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 if (_pendingReservation != null)
-                  Text('Reservation pending',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.orange.shade700,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    'Reservation pending',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
               ],
             ),
             const Spacer(),
@@ -762,11 +842,15 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
                 onPressed: _reservingSeat ? null : _reserveSeat,
                 icon: _reservingSeat
                     ? const SizedBox(
-                        width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.star_border, size: 18),
-                label: const Text('Reserve',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Reserve',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: _facultyColor,
                   minimumSize: const Size(90, 46),
@@ -779,8 +863,10 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
               TextButton.icon(
                 onPressed: _submitting ? null : _cancelReservation,
                 icon: const Icon(Icons.star, size: 18, color: _facultyColor),
-                label: const Text('Unreserve',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text(
+                  'Unreserve',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.orange.shade700,
                   minimumSize: const Size(100, 46),
@@ -803,12 +889,12 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     final buttonLabel = showEdit
         ? 'Edit'
         : showConfirm
-            ? 'Confirm'
-            : _editing
-                ? 'Cancel'
-                : 'Confirm';
-    final canPress = isOpen && !_submitting &&
-        (showEdit || showConfirm || _editing);
+        ? 'Confirm'
+        : _editing
+        ? 'Cancel'
+        : 'Confirm';
+    final canPress =
+        isOpen && !_submitting && (showEdit || showConfirm || _editing);
 
     VoidCallback? onPressed;
     if (showEdit) {
@@ -822,8 +908,9 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
     return FilledButton(
       onPressed: canPress ? onPressed : null,
       style: FilledButton.styleFrom(
-        backgroundColor:
-            isOpen ? (isFaculty ? _facultyColor : _studentColor) : null,
+        backgroundColor: isOpen
+            ? (isFaculty ? _facultyColor : _studentColor)
+            : null,
         minimumSize: const Size(130, 46),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -832,9 +919,14 @@ class _PassengerSeatScreenState extends ConsumerState<PassengerSeatScreen> {
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white),
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             )
-          : Text(buttonLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+          : Text(
+              buttonLabel,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
     );
   }
 }

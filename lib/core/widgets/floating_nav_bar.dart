@@ -39,9 +39,7 @@ class FloatingNavBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1C1E2C)
-                : Colors.white,
+            color: isDark ? const Color(0xFF1C1E2C) : Colors.white,
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
@@ -75,12 +73,14 @@ class FloatingNavBar extends StatelessWidget {
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeOutCubic,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 8),
+                          horizontal: 18,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: isActive
                               ? (isDark
-                                  ? const Color(0xFF3D3D8F)
-                                  : const Color(0xFF3D3D8F))
+                                    ? const Color(0xFF3D3D8F)
+                                    : const Color(0xFF3D3D8F))
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(18),
                         ),
@@ -104,13 +104,17 @@ class FloatingNavBar extends StatelessWidget {
                                 top: -4,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 1),
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: theme.colorScheme.error,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   constraints: const BoxConstraints(
-                                      minWidth: 16, minHeight: 14),
+                                    minWidth: 16,
+                                    minHeight: 14,
+                                  ),
                                   child: Text(
                                     item.unreadCount > 99
                                         ? '99+'

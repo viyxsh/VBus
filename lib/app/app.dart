@@ -8,22 +8,23 @@ import 'router/router.dart';
 
 // ─── Seed colours ─────────────────────────────────────────────────────────────
 // Primary: deep indigo-blue.  Secondary: teal-cyan accent.
-const _seed      = Color(0xFF3D5AFE); // vivid indigo
+const _seed = Color(0xFF3D5AFE); // vivid indigo
 const _secondary = Color(0xFF00BCD4); // cyan accent
 
 ThemeData _light() {
-  final cs = ColorScheme.fromSeed(
-    seedColor: _seed,
-    brightness: Brightness.light,
-    secondary: _secondary,
-  ).copyWith(
-    // Warmer surface tints for depth
-    surface: const Color(0xFFF8F9FF),
-    surfaceContainerLow:  const Color(0xFFEFF1FB),
-    surfaceContainerHigh: const Color(0xFFE3E6F5),
-    primaryContainer: const Color(0xFFDDE3FF),
-    secondaryContainer: const Color(0xFFCBF0F8),
-  );
+  final cs =
+      ColorScheme.fromSeed(
+        seedColor: _seed,
+        brightness: Brightness.light,
+        secondary: _secondary,
+      ).copyWith(
+        // Warmer surface tints for depth
+        surface: const Color(0xFFF8F9FF),
+        surfaceContainerLow: const Color(0xFFEFF1FB),
+        surfaceContainerHigh: const Color(0xFFE3E6F5),
+        primaryContainer: const Color(0xFFDDE3FF),
+        secondaryContainer: const Color(0xFFCBF0F8),
+      );
 
   return ThemeData(
     colorScheme: cs,
@@ -41,7 +42,9 @@ ThemeData _light() {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: const TextStyle(
-        fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1A1A2E),
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF1A1A2E),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -49,8 +52,11 @@ ThemeData _light() {
       indicatorColor: cs.primaryContainer,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w600,
-          color: s.contains(WidgetState.selected) ? cs.primary : cs.onSurfaceVariant,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: s.contains(WidgetState.selected)
+              ? cs.primary
+              : cs.onSurfaceVariant,
         ),
       ),
     ),
@@ -96,18 +102,19 @@ ThemeData _light() {
 }
 
 ThemeData _dark() {
-  final cs = ColorScheme.fromSeed(
-    seedColor: _seed,
-    brightness: Brightness.dark,
-    secondary: _secondary,
-  ).copyWith(
-    surface: const Color(0xFF12131A),
-    surfaceContainerLow:  const Color(0xFF1C1E2C),
-    surfaceContainerHigh: const Color(0xFF252840),
-    primaryContainer: const Color(0xFF1F2A6B),
-    secondaryContainer: const Color(0xFF003E4A),
-    onSurface: const Color(0xFFE8EAFF),
-  );
+  final cs =
+      ColorScheme.fromSeed(
+        seedColor: _seed,
+        brightness: Brightness.dark,
+        secondary: _secondary,
+      ).copyWith(
+        surface: const Color(0xFF12131A),
+        surfaceContainerLow: const Color(0xFF1C1E2C),
+        surfaceContainerHigh: const Color(0xFF252840),
+        primaryContainer: const Color(0xFF1F2A6B),
+        secondaryContainer: const Color(0xFF003E4A),
+        onSurface: const Color(0xFFE8EAFF),
+      );
 
   return ThemeData(
     colorScheme: cs,
@@ -125,7 +132,9 @@ ThemeData _dark() {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: const TextStyle(
-        fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFFE8EAFF),
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFFE8EAFF),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -133,8 +142,11 @@ ThemeData _dark() {
       indicatorColor: cs.primaryContainer,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w600,
-          color: s.contains(WidgetState.selected) ? cs.primary : cs.onSurfaceVariant,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: s.contains(WidgetState.selected)
+              ? cs.primary
+              : cs.onSurfaceVariant,
         ),
       ),
     ),
@@ -184,17 +196,17 @@ class VBusApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router    = ref.watch(routerProvider);
+    final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
-    final locale    = ref.watch(localeProvider);
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'VBUS',
       debugShowCheckedModeBanner: false,
-      theme:      _light(),
-      darkTheme:  _dark(),
-      themeMode:  themeMode,
-      locale:     locale,
+      theme: _light(),
+      darkTheme: _dark(),
+      themeMode: themeMode,
+      locale: locale,
       supportedLocales: const [Locale('en'), Locale('hi')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

@@ -63,18 +63,23 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
           .createDirectRoomForCurrentPassenger(inbox.busId);
       await _refresh();
       if (mounted) {
-        context.push('/chat/$roomId', extra: {
-          'title': inbox.conductorName ?? S.t(context, 'Conductor'),
-          'isBroadcast': false,
-          'phone': inbox.conductorPhone,
-        });
+        context.push(
+          '/chat/$roomId',
+          extra: {
+            'title': inbox.conductorName ?? S.t(context, 'Conductor'),
+            'isBroadcast': false,
+            'phone': inbox.conductorPhone,
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(e, fallback: 'Failed to start chat.')),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError(e, fallback: 'Failed to start chat.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _creating = false);
@@ -94,84 +99,91 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
       body: ClipRect(
         child: Column(
           children: [
-          // ── Gradient header ───────────────────────────────────────────────
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF3D3D8F), Color(0xFF6C63D8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            // ── Gradient header ───────────────────────────────────────────────
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF3D3D8F), Color(0xFF6C63D8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
-                    child: Text(
-                      S.t(context, 'Inbox'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        height: 1.1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                      child: Text(
+                        S.t(context, 'Inbox'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          height: 1.1,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 28),
-              ],
+                  const SizedBox(height: 28),
+                ],
+              ),
             ),
-          ),
 
-          // ── Content card — overlaps header ────────────────────────────────
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) => Transform.translate(
-                offset: const Offset(0, -28),
-                // OverflowBox makes the card 28px taller so that, once shifted
-                // up, it still reaches the bottom — otherwise its drop shadow
-                // floats as a band above the navbar.
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  minHeight: constraints.maxHeight + 28,
-                  maxHeight: constraints.maxHeight + 28,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? theme.colorScheme.surface : Colors.white,
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(24)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: isDark ? 0.30 : 0.12),
-                          blurRadius: 24,
-                          offset: const Offset(0, -6),
+            // ── Content card — overlaps header ────────────────────────────────
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Transform.translate(
+                  offset: const Offset(0, -28),
+                  // OverflowBox makes the card 28px taller so that, once shifted
+                  // up, it still reaches the bottom — otherwise its drop shadow
+                  // floats as a band above the navbar.
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: constraints.maxHeight + 28,
+                    maxHeight: constraints.maxHeight + 28,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? theme.colorScheme.surface
+                            : Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(24),
                         ),
-                      ],
-                    ),
-                    child: inboxAsync.when(
-                      loading: () => const Center(child: LottieLoading()),
-                      error: (e, _) => _buildError(theme),
-                      data: (inbox) => RefreshIndicator(
-                        onRefresh: _refresh,
-                        child: ListView(
-                          padding:
-                              const EdgeInsets.only(top: 14, bottom: 20),
-                          children: [
-                            if (inbox.broadcast != null)
-                              _buildTile(inbox.broadcast!, theme)
-                            else
-                              _buildUnavailableTile('Bus ${inbox.busNumber}',
-                                  'assets/icons/passengers.svg', theme),
-                            if (inbox.direct != null)
-                              _buildTile(inbox.direct!, theme)
-                            else
-                              _buildStartDMTile(inbox, theme),
-                          ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.30 : 0.12,
+                            ),
+                            blurRadius: 24,
+                            offset: const Offset(0, -6),
+                          ),
+                        ],
+                      ),
+                      child: inboxAsync.when(
+                        loading: () => const Center(child: LottieLoading()),
+                        error: (e, _) => _buildError(theme),
+                        data: (inbox) => RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: ListView(
+                            padding: const EdgeInsets.only(top: 14, bottom: 20),
+                            children: [
+                              if (inbox.broadcast != null)
+                                _buildTile(inbox.broadcast!, theme)
+                              else
+                                _buildUnavailableTile(
+                                  'Bus ${inbox.busNumber}',
+                                  'assets/icons/passengers.svg',
+                                  theme,
+                                ),
+                              if (inbox.direct != null)
+                                _buildTile(inbox.direct!, theme)
+                              else
+                                _buildStartDMTile(inbox, theme),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -179,7 +191,6 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
                 ),
               ),
             ),
-          ),
           ],
         ),
       ),
@@ -188,8 +199,7 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
 
   Widget _buildTile(InboxRoom room, ThemeData theme) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: theme.colorScheme.primaryContainer,
@@ -197,24 +207,34 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
           room.isBroadcast
               ? 'assets/icons/passengers.svg'
               : 'assets/icons/circle-user.svg',
-          width: 22, height: 22,
+          width: 22,
+          height: 22,
           colorFilter: ColorFilter.mode(
-              theme.colorScheme.primary, BlendMode.srcIn),
+            theme.colorScheme.primary,
+            BlendMode.srcIn,
+          ),
         ),
       ),
       title: Row(
         children: [
           Flexible(
             child: Text(
-                room.isBroadcast
-                    ? '${S.t(context, 'Bus')} ${room.title}'
-                    : room.title,
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis),
+              room.isBroadcast
+                  ? '${S.t(context, 'Bus')} ${room.title}'
+                  : room.title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           const SizedBox(width: 6),
-          _badge(room.isBroadcast ? S.t(context, 'Broadcast') : S.t(context, 'Private'), theme),
+          _badge(
+            room.isBroadcast
+                ? S.t(context, 'Broadcast')
+                : S.t(context, 'Private'),
+            theme,
+          ),
         ],
       ),
       subtitle: room.lastMessage != null
@@ -224,84 +244,114 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
                   : room.lastMessage!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            )
-          : Text(S.t(context, 'No messages yet'),
               style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outlineVariant,
-                  fontStyle: FontStyle.italic)),
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          : Text(
+              S.t(context, 'No messages yet'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outlineVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
       trailing: room.lastMessageAt != null
-          ? Text(_formatTime(room.lastMessageAt!),
-              style: theme.textTheme.labelSmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant))
+          ? Text(
+              _formatTime(room.lastMessageAt!),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
           : null,
-      onTap: () => context.push('/chat/${room.id}', extra: {
-        'title': room.title,
-        'isBroadcast': room.isBroadcast,
-        'phone': room.phone,
-      }),
+      onTap: () => context.push(
+        '/chat/${room.id}',
+        extra: {
+          'title': room.title,
+          'isBroadcast': room.isBroadcast,
+          'phone': room.phone,
+        },
+      ),
     );
   }
 
   Widget _buildStartDMTile(PassengerInbox inbox, ThemeData theme) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: theme.colorScheme.surfaceContainerHigh,
-        child: SvgPicture.asset('assets/icons/circle-user.svg',
-            width: 22, height: 22,
-            colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurfaceVariant, BlendMode.srcIn)),
+        child: SvgPicture.asset(
+          'assets/icons/circle-user.svg',
+          width: 22,
+          height: 22,
+          colorFilter: ColorFilter.mode(
+            theme.colorScheme.onSurfaceVariant,
+            BlendMode.srcIn,
+          ),
+        ),
       ),
       title: Row(
         children: [
           Flexible(
-            child: Text(inbox.conductorName ?? S.t(context, 'Conductor'),
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              inbox.conductorName ?? S.t(context, 'Conductor'),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           const SizedBox(width: 6),
           _badge(S.t(context, 'Private'), theme),
         ],
       ),
-      subtitle: Text(S.t(context, 'Tap to start private chat'),
-          style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontStyle: FontStyle.italic)),
+      subtitle: Text(
+        S.t(context, 'Tap to start private chat'),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.primary,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
       trailing: _creating
           ? const SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2))
-          : Icon(Icons.add_comment_outlined,
-              color: theme.colorScheme.primary),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(Icons.add_comment_outlined, color: theme.colorScheme.primary),
       onTap: _creating ? null : () => _startDM(inbox),
     );
   }
 
-  Widget _buildUnavailableTile(
-      String title, String svgPath, ThemeData theme) {
+  Widget _buildUnavailableTile(String title, String svgPath, ThemeData theme) {
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: theme.colorScheme.surfaceContainerHigh,
-        child: SvgPicture.asset(svgPath, width: 22, height: 22,
-            colorFilter: ColorFilter.mode(
-                theme.colorScheme.onSurfaceVariant, BlendMode.srcIn)),
+        child: SvgPicture.asset(
+          svgPath,
+          width: 22,
+          height: 22,
+          colorFilter: ColorFilter.mode(
+            theme.colorScheme.onSurfaceVariant,
+            BlendMode.srcIn,
+          ),
+        ),
       ),
-      title: Text(title,
-          style: theme.textTheme.titleSmall
-              ?.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text(S.t(context, 'Not set up yet'),
-          style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.outlineVariant,
-              fontStyle: FontStyle.italic)),
+      title: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        S.t(context, 'Not set up yet'),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.outlineVariant,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
     );
   }
 
@@ -312,9 +362,12 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
         color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label,
-          style: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.primary)),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
+      ),
     );
   }
 
@@ -323,15 +376,17 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline,
-              size: 48, color: theme.colorScheme.error),
+          Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
           const SizedBox(height: 12),
-          Text(S.t(context, 'Failed to load inbox'),
-              style: theme.textTheme.titleSmall),
+          Text(
+            S.t(context, 'Failed to load inbox'),
+            style: theme.textTheme.titleSmall,
+          ),
           const SizedBox(height: 16),
           FilledButton(
-              onPressed: () => ref.invalidate(passengerInboxProvider),
-              child: Text(S.t(context, 'Retry'))),
+            onPressed: () => ref.invalidate(passengerInboxProvider),
+            child: Text(S.t(context, 'Retry')),
+          ),
         ],
       ),
     );
@@ -340,13 +395,17 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
     final local = dt.toLocal();
-    if (local.day == now.day && local.month == now.month &&
+    if (local.day == now.day &&
+        local.month == now.month &&
         local.year == now.year) {
       return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
     }
     final diff = now.difference(local).inDays;
     if (diff == 1) return S.t(context, 'Yesterday');
-    if (diff < 7) return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][local.weekday - 1];
+    if (diff < 7) {
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][local.weekday -
+          1];
+    }
     return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${(local.year % 100).toString().padLeft(2, '0')}';
   }
 }

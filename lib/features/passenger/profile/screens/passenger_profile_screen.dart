@@ -75,7 +75,8 @@ class _PassengerProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => PassengerCustomPinsSheet(busId: busId),
     );
   }
@@ -94,7 +95,8 @@ class _PassengerProfileScreenState
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(S.t(context, 'Log out')),
           ),
         ],
@@ -111,7 +113,12 @@ class _PassengerProfileScreenState
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(S.t(context, 'Leave Bus')),
-        content: Text(S.t(context, 'Are you sure you want to leave Bus $bus? You can request a different bus later.')),
+        content: Text(
+          S.t(
+            context,
+            'Are you sure you want to leave Bus $bus? You can request a different bus later.',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -120,7 +127,8 @@ class _PassengerProfileScreenState
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(S.t(context, 'Leave Bus')),
           ),
         ],
@@ -134,11 +142,14 @@ class _PassengerProfileScreenState
       } catch (e) {
         debugPrint('[LEAVE_BUS] error: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(S.t(context,
-                'Failed to leave bus. Please try again.')),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                S.t(context, 'Failed to leave bus. Please try again.'),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
         }
       }
     }
@@ -150,7 +161,8 @@ class _PassengerProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => PassengerEditProfileSheet(profile: profile),
     );
   }
@@ -161,7 +173,8 @@ class _PassengerProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => const BookingHistorySheet(),
     );
   }
@@ -180,8 +193,10 @@ class _PassengerProfileScreenState
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
-        title: Text(S.t(context, 'Settings'),
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          S.t(context, 'Settings'),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         centerTitle: true,
         scrolledUnderElevation: 0,
         elevation: 0,
@@ -189,23 +204,26 @@ class _PassengerProfileScreenState
       body: profileAsync.when(
         loading: () => const Center(child: LottieLoading()),
         error: (e, _) => Center(
-            child: FilledButton(
-                onPressed: () => ref.invalidate(passengerProfileProvider),
-                child: Text(S.t(context, 'Retry')))),
+          child: FilledButton(
+            onPressed: () => ref.invalidate(passengerProfileProvider),
+            child: Text(S.t(context, 'Retry')),
+          ),
+        ),
         data: (profile) {
           final name = profile['name'] as String? ?? '';
           final email = profile['email'] as String? ?? '';
           final busId = profile['bus_id'] as String?;
-          final avatarUrl =
-              ref.read(passengerRepositoryProvider).currentAvatarUrl;
+          final avatarUrl = ref
+              .read(passengerRepositoryProvider)
+              .currentAvatarUrl;
           final initials = name.trim().isNotEmpty
               ? name
-                  .trim()
-                  .split(' ')
-                  .map((w) => w[0])
-                  .take(2)
-                  .join()
-                  .toUpperCase()
+                    .trim()
+                    .split(' ')
+                    .map((w) => w[0])
+                    .take(2)
+                    .join()
+                    .toUpperCase()
               : '?';
 
           return ListView(
@@ -224,11 +242,14 @@ class _PassengerProfileScreenState
                             ? NetworkImage(avatarUrl)
                             : null,
                         child: avatarUrl == null
-                            ? Text(initials,
+                            ? Text(
+                                initials,
                                 style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.colorScheme.primary))
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              )
                             : null,
                       ),
                       const SizedBox(width: 14),
@@ -236,35 +257,46 @@ class _PassengerProfileScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name,
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700)),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text(email,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color:
-                                        theme.colorScheme.onSurfaceVariant),
-                                overflow: TextOverflow.ellipsis),
+                            Text(
+                              email,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             const SizedBox(height: 6),
                             GestureDetector(
                               onTap: () => _showEditProfile(profile),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  SvgPicture.asset('assets/icons/pencil.svg',
-                                      width: 13,
-                                      height: 13,
-                                      colorFilter: ColorFilter.mode(
-                                          theme.colorScheme.primary,
-                                          BlendMode.srcIn)),
+                                  SvgPicture.asset(
+                                    'assets/icons/pencil.svg',
+                                    width: 13,
+                                    height: 13,
+                                    colorFilter: ColorFilter.mode(
+                                      theme.colorScheme.primary,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(S.t(context, 'Edit Profile'),
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.w600)),
+                                  Text(
+                                    S.t(context, 'Edit Profile'),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -279,44 +311,61 @@ class _PassengerProfileScreenState
               // ── Account ───────────────────────────────────────────────────────
               profileSectionLabel(S.t(context, 'Account'), theme),
               profileCard([
-                profileRow('assets/icons/history.svg',
-                    S.t(context, 'Seat Booking History'),
-                    onTap: _showBookingHistory, theme: theme),
+                profileRow(
+                  'assets/icons/history.svg',
+                  S.t(context, 'Seat Booking History'),
+                  onTap: _showBookingHistory,
+                  theme: theme,
+                ),
                 profileDivider(theme),
                 if (busId != null)
-                  profileRow('assets/icons/gps.svg',
-                      S.t(context, 'Custom Stop Pins'),
-                      subtitle: S.t(context, 'Manage your saved pins'),
-                      onTap: () => _showCustomPins(busId),
-                      theme: theme),
+                  profileRow(
+                    'assets/icons/gps.svg',
+                    S.t(context, 'Custom Stop Pins'),
+                    subtitle: S.t(context, 'Manage your saved pins'),
+                    onTap: () => _showCustomPins(busId),
+                    theme: theme,
+                  ),
               ], theme),
 
               // ── Notifications ─────────────────────────────────────────────────
               profileSectionLabel(S.t(context, 'Notifications'), theme),
               profileCard([
-                profileToggleRow('assets/icons/notification.svg',
-                    S.t(context, 'Seat Booking Reminder'),
-                    hint: S.t(context,
-                        'Remind me before the 8 PM booking window opens'),
-                    value: _notifEnabled,
-                    onChanged: _toggleNotif,
-                    theme: theme),
+                profileToggleRow(
+                  'assets/icons/notification.svg',
+                  S.t(context, 'Seat Booking Reminder'),
+                  hint: S.t(
+                    context,
+                    'Remind me before the 8 PM booking window opens',
+                  ),
+                  value: _notifEnabled,
+                  onChanged: _toggleNotif,
+                  theme: theme,
+                ),
                 profileDivider(theme),
-                profileToggleRow('assets/icons/gps.svg',
-                    S.t(context, 'Custom Pin Alerts'),
-                    hint: S.t(context,
-                        'Alert me when the bus nears my saved map pins'),
-                    value: _pinNotifEnabled,
-                    onChanged: _togglePinNotif,
-                    theme: theme),
+                profileToggleRow(
+                  'assets/icons/gps.svg',
+                  S.t(context, 'Custom Pin Alerts'),
+                  hint: S.t(
+                    context,
+                    'Alert me when the bus nears my saved map pins',
+                  ),
+                  value: _pinNotifEnabled,
+                  onChanged: _togglePinNotif,
+                  theme: theme,
+                ),
                 profileDivider(theme),
-                profileToggleRow('assets/icons/gps.svg',
-                    S.t(context, 'Bus Arrival Alert'),
-                    hint: S.t(context,
-                        'Notify me when the bus arrives at my stop'),
-                    value: _busArrivalNotifEnabled,
-                    onChanged: _toggleBusArrivalNotif,
-                    theme: theme),
+                profileToggleRow(
+                  'assets/icons/gps.svg',
+                  S.t(context, 'Bus Arrival Alert'),
+                  hint: S.t(
+                    context,
+                    'Notify me when the bus arrives at my stop',
+                  ),
+                  value: _busArrivalNotifEnabled,
+                  onChanged: _toggleBusArrivalNotif,
+                  theme: theme,
+                ),
               ], theme),
 
               // ── General ───────────────────────────────────────────────────────
@@ -328,9 +377,9 @@ class _PassengerProfileScreenState
                   value: isDarkMode
                       ? S.t(context, 'Dark')
                       : S.t(context, 'Light'),
-                  onTap: () => ref.read(themeProvider.notifier).setMode(
-                        isDarkMode ? ThemeMode.light : ThemeMode.dark,
-                      ),
+                  onTap: () => ref
+                      .read(themeProvider.notifier)
+                      .setMode(isDarkMode ? ThemeMode.light : ThemeMode.dark),
                   theme: theme,
                 ),
                 profileDivider(theme),
@@ -340,7 +389,9 @@ class _PassengerProfileScreenState
                   value: isHindi
                       ? S.t(context, 'Hindi')
                       : S.t(context, 'English'),
-                  onTap: () => ref.read(localeProvider.notifier).setLocale(
+                  onTap: () => ref
+                      .read(localeProvider.notifier)
+                      .setLocale(
                         isHindi ? const Locale('en') : const Locale('hi'),
                       ),
                   theme: theme,
@@ -351,18 +402,22 @@ class _PassengerProfileScreenState
               profileSectionLabel(S.t(context, 'Support'), theme),
               profileCard([
                 if (busId != null) ...[
-                  profileRow('assets/icons/bus.svg', S.t(context, 'Leave Bus'),
-                      subtitle:
-                          S.t(context, 'Remove yourself from this bus'),
-                      onTap: () => _leaveBus(profile),
-                      theme: theme),
+                  profileRow(
+                    'assets/icons/bus.svg',
+                    S.t(context, 'Leave Bus'),
+                    subtitle: S.t(context, 'Remove yourself from this bus'),
+                    onTap: () => _leaveBus(profile),
+                    theme: theme,
+                  ),
                   profileDivider(theme),
                 ],
-                profileRow('assets/icons/sign-out-alt.svg',
-                    S.t(context, 'Log Out'),
-                    color: theme.colorScheme.error,
-                    onTap: _signOut,
-                    theme: theme),
+                profileRow(
+                  'assets/icons/sign-out-alt.svg',
+                  S.t(context, 'Log Out'),
+                  color: theme.colorScheme.error,
+                  onTap: _signOut,
+                  theme: theme,
+                ),
               ], theme),
             ],
           );

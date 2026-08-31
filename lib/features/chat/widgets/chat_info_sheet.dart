@@ -32,7 +32,8 @@ class ChatInfoSheet extends ConsumerWidget {
           // Handle
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: theme.colorScheme.outlineVariant,
@@ -54,57 +55,77 @@ class ChatInfoSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(title,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             S.t(context, isConductor ? 'Passenger' : 'Conductor'),
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 20),
           detailsAsync.when(
             loading: () => const LottieLoading(size: 60),
-            error: (_, __) => Text(S.t(context, 'Could not load details'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant)),
+            error: (_, __) => Text(
+              S.t(context, 'Could not load details'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             data: (details) {
               if (details == null) {
-                return Text(S.t(context, 'Could not load details'),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant));
+                return Text(
+                  S.t(context, 'Could not load details'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                );
               }
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _infoRow(
-                      theme,
-                      Icons.phone_outlined,
-                      S.t(context, 'Phone'),
-                      (details['phone'] as String?)?.isNotEmpty == true
-                          ? details['phone'] as String
-                          : S.t(context, 'Not provided')),
+                    theme,
+                    Icons.phone_outlined,
+                    S.t(context, 'Phone'),
+                    (details['phone'] as String?)?.isNotEmpty == true
+                        ? details['phone'] as String
+                        : S.t(context, 'Not provided'),
+                  ),
                   if (!isConductor) ...[
-                    _infoRow(theme, Icons.badge_outlined, S.t(context, 'ID'),
-                        details['institute_id'] as String? ?? '—'),
                     _infoRow(
-                        theme,
-                        Icons.school_outlined,
-                        S.t(context, 'Type'),
-                        (details['user_type'] as String?) == 'faculty'
-                            ? S.t(context, 'Faculty')
-                            : S.t(context, 'Student')),
+                      theme,
+                      Icons.badge_outlined,
+                      S.t(context, 'ID'),
+                      details['institute_id'] as String? ?? '—',
+                    ),
                     _infoRow(
-                        theme,
-                        Icons.place_outlined,
-                        S.t(context, 'Boarding Stop'),
-                        (details['bus_stops'] as Map?)?['name'] as String? ??
-                            '—'),
+                      theme,
+                      Icons.school_outlined,
+                      S.t(context, 'Type'),
+                      (details['user_type'] as String?) == 'faculty'
+                          ? S.t(context, 'Faculty')
+                          : S.t(context, 'Student'),
+                    ),
+                    _infoRow(
+                      theme,
+                      Icons.place_outlined,
+                      S.t(context, 'Boarding Stop'),
+                      (details['bus_stops'] as Map?)?['name'] as String? ?? '—',
+                    ),
                   ],
                   if (isConductor)
-                    _infoRow(theme, Icons.email_outlined, S.t(context, 'Email'),
-                        details['email'] as String? ?? '—'),
+                    _infoRow(
+                      theme,
+                      Icons.email_outlined,
+                      S.t(context, 'Email'),
+                      details['email'] as String? ?? '—',
+                    ),
                 ],
               );
             },
@@ -121,14 +142,20 @@ class ChatInfoSheet extends ConsumerWidget {
         children: [
           Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 12),
-          Text('$label: ',
-              style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant)),
+          Text(
+            '$label: ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
           Expanded(
-            child: Text(value,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w500),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

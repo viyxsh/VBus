@@ -9,17 +9,18 @@ class LottieLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Lottie.asset(
-        'assets/animations/loading.json',
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
-      );
+    'assets/animations/loading.json',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
 }
 
 // ─── Overlay helpers ──────────────────────────────────────────────────────────
 
 /// Plays Check.lottie once then auto-dismisses.
-Future<void> showSuccessOverlay(BuildContext context, {String? message}) => showDialog<void>(
+Future<void> showSuccessOverlay(BuildContext context, {String? message}) =>
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black54,
@@ -49,7 +50,11 @@ class _AnimOverlay extends StatefulWidget {
   final String path;
   final String? message;
   final bool autoClose;
-  const _AnimOverlay({required this.path, this.message, required this.autoClose});
+  const _AnimOverlay({
+    required this.path,
+    this.message,
+    required this.autoClose,
+  });
 
   @override
   State<_AnimOverlay> createState() => _AnimOverlayState();
@@ -103,7 +108,9 @@ class _AnimOverlayState extends State<_AnimOverlay>
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   child: Text(
                     widget.message!,
                     textAlign: TextAlign.center,

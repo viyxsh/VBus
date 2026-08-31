@@ -19,8 +19,7 @@ class PendingApprovalScreen extends ConsumerStatefulWidget {
       _PendingApprovalScreenState();
 }
 
-class _PendingApprovalScreenState
-    extends ConsumerState<PendingApprovalScreen> {
+class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
   String _status = 'pending';
   String? _rejectionReason;
   bool _loadingProfile = true;
@@ -43,12 +42,14 @@ class _PendingApprovalScreenState
 
   Future<void> _loadProfile() async {
     try {
-      final data =
-          await ref.read(registrationRepositoryProvider).approvalInfo();
+      final data = await ref
+          .read(registrationRepositoryProvider)
+          .approvalInfo();
 
       final userId = supabase.auth.currentUser!.id;
-      final request =
-          await ref.read(busRequestRepositoryProvider).latestRequest(userId);
+      final request = await ref
+          .read(busRequestRepositoryProvider)
+          .latestRequest(userId);
 
       if (mounted) {
         setState(() {
@@ -67,23 +68,23 @@ class _PendingApprovalScreenState
   }
 
   void _subscribeToChanges() {
-    _channel = ref.read(registrationRepositoryProvider).subscribeApproval(
-      (newRecord) {
-        final newStatus = newRecord['approval_status'] as String? ?? 'pending';
-        final reason = newRecord['rejection_reason'] as String?;
+    _channel = ref.read(registrationRepositoryProvider).subscribeApproval((
+      newRecord,
+    ) {
+      final newStatus = newRecord['approval_status'] as String? ?? 'pending';
+      final reason = newRecord['rejection_reason'] as String?;
 
-        if (!mounted) return;
-        setState(() {
-          _status = newStatus;
-          _rejectionReason = reason;
-        });
+      if (!mounted) return;
+      setState(() {
+        _status = newStatus;
+        _rejectionReason = reason;
+      });
 
-        if (newStatus == 'approved') {
-          supabase.auth.refreshSession();
-          context.go('/passenger/home');
-        }
-      },
-    );
+      if (newStatus == 'approved') {
+        supabase.auth.refreshSession();
+        context.go('/passenger/home');
+      }
+    });
   }
 
   void _requestAnotherBus() {
@@ -167,8 +168,8 @@ class _PendingApprovalScreenState
         Text(
           hasActiveRequest
               ? (busNumber != null
-                  ? 'Your request to join Bus $busNumber has been sent. You\'ll be notified once it\'s approved.'
-                  : 'Your request has been submitted and is being reviewed.')
+                    ? 'Your request to join Bus $busNumber has been sent. You\'ll be notified once it\'s approved.'
+                    : 'Your request has been submitted and is being reviewed.')
               : 'Your account shows a pending status but no active bus request was found. Please submit a new request.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -224,9 +225,7 @@ class _PendingApprovalScreenState
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.primaryContainer,
-        ),
+        border: Border.all(color: theme.colorScheme.primaryContainer),
       ),
       child: Row(
         children: [
@@ -273,9 +272,17 @@ class _PendingApprovalScreenState
           ),
         ),
         const SizedBox(height: 12),
-        _buildStep(theme, '1', 'The conductor of your selected bus reviews your request'),
+        _buildStep(
+          theme,
+          '1',
+          'The conductor of your selected bus reviews your request',
+        ),
         const SizedBox(height: 10),
-        _buildStep(theme, '2', 'You\'ll be notified once the conductor approves'),
+        _buildStep(
+          theme,
+          '2',
+          'You\'ll be notified once the conductor approves',
+        ),
         const SizedBox(height: 10),
         _buildStep(theme, '3', 'If rejected, you can request a different bus'),
       ],
@@ -392,18 +399,12 @@ class _PendingApprovalScreenState
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.errorContainer,
-        ),
+        border: Border.all(color: theme.colorScheme.errorContainer),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.info_outline,
-            color: theme.colorScheme.error,
-            size: 20,
-          ),
+          Icon(Icons.info_outline, color: theme.colorScheme.error, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

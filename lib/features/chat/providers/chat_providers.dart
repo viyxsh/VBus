@@ -11,8 +11,11 @@ part 'chat_providers.g.dart';
 /// If [since] is provided (e.g. a passenger's approved_at for a broadcast
 /// room), only messages sent at or after that time are loaded.
 @riverpod
-Stream<List<ChatMessage>> chatMessages(Ref ref, String roomId, {DateTime? since}) =>
-    ref.watch(chatRepositoryProvider).watchMessages(roomId, since: since);
+Stream<List<ChatMessage>> chatMessages(
+  Ref ref,
+  String roomId, {
+  DateTime? since,
+}) => ref.watch(chatRepositoryProvider).watchMessages(roomId, since: since);
 
 /// The signed-in user's display name, used as the message sender name.
 @riverpod

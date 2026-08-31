@@ -53,13 +53,13 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
   Future<void> _checkExistingRequest() async {
     try {
       final userId = supabase.auth.currentUser!.id;
-      final pending =
-          await ref.read(busRequestRepositoryProvider).myPendingRequest(userId);
+      final pending = await ref
+          .read(busRequestRepositoryProvider)
+          .myPendingRequest(userId);
       if (mounted) {
         setState(() {
           _requestSent = pending != null;
-          _pendingBusNumber =
-              pending?['buses']?['bus_number'] as String?;
+          _pendingBusNumber = pending?['buses']?['bus_number'] as String?;
           _initialLoading = false;
         });
       }
@@ -79,27 +79,56 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
   Future<void> _loadCities() async {
     try {
       final data = await ref.read(registrationRepositoryProvider).cities();
-      if (mounted) setState(() { _cities = data; _loadingCities = false; });
+      if (mounted) {
+        setState(() {
+          _cities = data;
+          _loadingCities = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingCities = false);
     }
   }
 
   Future<void> _loadBuses(String cityId) async {
-    setState(() { _loadingBuses = true; _buses = []; _stops = []; _selectedBus = null; _selectedStop = null; });
+    setState(() {
+      _loadingBuses = true;
+      _buses = [];
+      _stops = [];
+      _selectedBus = null;
+      _selectedStop = null;
+    });
     try {
-      final data = await ref.read(registrationRepositoryProvider).busesForCity(cityId);
-      if (mounted) setState(() { _buses = data; _loadingBuses = false; });
+      final data = await ref
+          .read(registrationRepositoryProvider)
+          .busesForCity(cityId);
+      if (mounted) {
+        setState(() {
+          _buses = data;
+          _loadingBuses = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingBuses = false);
     }
   }
 
   Future<void> _loadStops(String routeId) async {
-    setState(() { _loadingStops = true; _stops = []; _selectedStop = null; });
+    setState(() {
+      _loadingStops = true;
+      _stops = [];
+      _selectedStop = null;
+    });
     try {
-      final data = await ref.read(registrationRepositoryProvider).stopsForRoute(routeId);
-      if (mounted) setState(() { _stops = data; _loadingStops = false; });
+      final data = await ref
+          .read(registrationRepositoryProvider)
+          .stopsForRoute(routeId);
+      if (mounted) {
+        setState(() {
+          _stops = data;
+          _loadingStops = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingStops = false);
     }
@@ -117,8 +146,9 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
       final busId = _selectedBus!['id'] as String;
       final stopId = _selectedStop!['id'] as String;
 
-      final existing =
-          await ref.read(busRequestRepositoryProvider).myPendingRequest(userId);
+      final existing = await ref
+          .read(busRequestRepositoryProvider)
+          .myPendingRequest(userId);
 
       if (existing != null && existing['bus_id'] == busId) {
         await supabase
@@ -137,13 +167,14 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
       }
 
       // Cancel old requests first (safe – only touches bus_requests)
-      await ref.read(busRequestRepositoryProvider).cancelPendingRequests(userId);
+      await ref
+          .read(busRequestRepositoryProvider)
+          .cancelPendingRequests(userId);
 
       // Create the new join request – if this fails, passengers table is untouched
-      await ref.read(busRequestRepositoryProvider).createJoinRequest(
-        passengerId: userId,
-        busId: busId,
-      );
+      await ref
+          .read(busRequestRepositoryProvider)
+          .createJoinRequest(passengerId: userId, busId: busId);
 
       // Only update passengers after the request is confirmed
       await supabase
@@ -175,10 +206,12 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Theme.of(context).colorScheme.primary,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+    );
   }
 
   void _startEditing() {
@@ -223,10 +256,12 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Theme.of(context).colorScheme.error,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   @override
@@ -235,7 +270,10 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
 
     if (_initialLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Select Your Bus'), centerTitle: false),
+        appBar: AppBar(
+          title: const Text('Select Your Bus'),
+          centerTitle: false,
+        ),
         body: const Center(child: LottieLoading()),
       );
     }
@@ -310,12 +348,18 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  color: theme.colorScheme.primaryContainer.withValues(
+                    alpha: 0.3,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.schedule, size: 20, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.schedule,
+                      size: 20,
+                      color: theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -411,13 +455,15 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
                           hint: _selectedCity == null
                               ? 'Select city first'
                               : _loadingBuses
-                                  ? 'Loading buses...'
-                                  : 'Select bus',
+                              ? 'Loading buses...'
+                              : 'Select bus',
                           loading: _loadingBuses,
                           enabled: _selectedCity != null,
                           onChanged: (bus) {
                             setState(() => _selectedBus = bus);
-                            if (bus != null) _loadStops(bus['route_id'] as String);
+                            if (bus != null) {
+                              _loadStops(bus['route_id'] as String);
+                            }
                           },
                         ),
                         const SizedBox(height: 16),
@@ -430,11 +476,12 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
                           hint: _selectedBus == null
                               ? 'Select bus first'
                               : _loadingStops
-                                  ? 'Loading stops...'
-                                  : 'Select your stop',
+                              ? 'Loading stops...'
+                              : 'Select your stop',
                           loading: _loadingStops,
                           enabled: _selectedBus != null,
-                          onChanged: (stop) => setState(() => _selectedStop = stop),
+                          onChanged: (stop) =>
+                              setState(() => _selectedStop = stop),
                         ),
                       ],
                     ),
@@ -467,10 +514,10 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
       ),
       hint: Text(loading ? 'Loading...' : hint),
       items: items
-          .map((item) => DropdownMenuItem(
-                value: item,
-                child: Text(displayName(item)),
-              ))
+          .map(
+            (item) =>
+                DropdownMenuItem(value: item, child: Text(displayName(item))),
+          )
           .toList(),
       onChanged: enabled ? onChanged : null,
       validator: (_) => value == null ? 'Select $label' : null,
@@ -480,7 +527,10 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
   Widget _buildSubmitBar(ThemeData theme) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        24, 16, 24, 16 + MediaQuery.of(context).padding.bottom,
+        24,
+        16,
+        24,
+        16 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -501,10 +551,14 @@ class _BusSelectScreenState extends ConsumerState<BusSelectScreen> {
                 height: 20,
                 width: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
-            : const Text('Send Request',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            : const Text(
+                'Send Request',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
       ),
     );
   }

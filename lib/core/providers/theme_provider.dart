@@ -10,7 +10,7 @@ ThemeMode _cachedTheme = ThemeMode.system;
 
 Future<void> preLoadTheme() async {
   final val = await _storage.read(key: _key);
-  if (val == 'dark')  _cachedTheme = ThemeMode.dark;
+  if (val == 'dark') _cachedTheme = ThemeMode.dark;
   if (val == 'light') _cachedTheme = ThemeMode.light;
 }
 
@@ -30,4 +30,6 @@ class ThemeNotifier extends Notifier<ThemeMode> {
   bool get isDark => state == ThemeMode.dark;
 }
 
-final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.new);
+final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(
+  ThemeNotifier.new,
+);

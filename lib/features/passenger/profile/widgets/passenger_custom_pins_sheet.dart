@@ -38,7 +38,8 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
                   labelText: 'Label',
                   hintText: 'e.g. Near my colony gate',
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -47,13 +48,14 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
                 decoration: InputDecoration(
                   labelText: 'Notify me before',
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 items: [2, 5, 10, 15]
-                    .map((m) => DropdownMenuItem(
-                          value: m,
-                          child: Text('$m minutes'),
-                        ))
+                    .map(
+                      (m) =>
+                          DropdownMenuItem(value: m, child: Text('$m minutes')),
+                    )
                     .toList(),
                 onChanged: (v) => setSt(() => threshold = v!),
               ),
@@ -61,11 +63,13 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(S.t(context, 'Cancel'))),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(S.t(context, 'Cancel')),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Add Pin')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Add Pin'),
+            ),
           ],
         ),
       ),
@@ -75,7 +79,9 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
 
     // 3. Persist and refresh the list.
     try {
-      await ref.read(passengerRepositoryProvider).addCustomPin(
+      await ref
+          .read(passengerRepositoryProvider)
+          .addCustomPin(
             busId: busId,
             label: labelCtrl.text.trim(),
             latitude: position.latitude,
@@ -85,16 +91,22 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
       ref.invalidate(customPinsProvider(busId));
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(e, fallback: 'Failed to add pin.')),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError(e, fallback: 'Failed to add pin.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     }
   }
 
   Future<void> _delete(
-      BuildContext context, WidgetRef ref, String id, String label) async {
+    BuildContext context,
+    WidgetRef ref,
+    String id,
+    String label,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -102,12 +114,14 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
         content: Text('Remove "$label"?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(S.t(context, 'Cancel'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(S.t(context, 'Cancel')),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(S.t(context, 'Remove')),
           ),
         ],
@@ -132,9 +146,12 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
               children: [
-                Text(S.t(context, 'Custom Stop Pins'),
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  S.t(context, 'Custom Stop Pins'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () => _addPin(context, ref),
@@ -142,8 +159,9 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
                   label: const Text('Add Pin'),
                 ),
                 IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context)),
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
           ),
@@ -152,26 +170,38 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
             child: pinsAsync.when(
               loading: () => const Center(child: LottieLoading()),
               error: (e, _) => Center(
-                  child: Text('Failed to load pins',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant))),
+                child: Text(
+                  'Failed to load pins',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
               data: (pins) {
                 if (pins.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.location_off_outlined,
-                            size: 48,
-                            color: theme.colorScheme.outlineVariant),
+                        Icon(
+                          Icons.location_off_outlined,
+                          size: 48,
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         const SizedBox(height: 12),
-                        Text('No custom pins yet',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant)),
+                        Text(
+                          'No custom pins yet',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                         const SizedBox(height: 6),
-                        Text('Tap "Add Pin" above, or long-press on the map',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.outlineVariant)),
+                        Text(
+                          'Tap "Add Pin" above, or long-press on the map',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -187,22 +217,33 @@ class PassengerCustomPinsSheet extends ConsumerWidget {
                     final mins = pin['notify_minutes_before'] as int;
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: const Color(0xFFE65100)
-                            .withValues(alpha: 0.1),
-                        child: const Icon(Icons.location_on_rounded,
-                            color: Color(0xFFE65100), size: 20),
+                        backgroundColor: const Color(
+                          0xFFE65100,
+                        ).withValues(alpha: 0.1),
+                        child: const Icon(
+                          Icons.location_on_rounded,
+                          color: Color(0xFFE65100),
+                          size: 20,
+                        ),
                       ),
-                      title: Text(label,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      title: Text(
+                        label,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       subtitle: Text(
                         'Notify $mins min before arrival',
                         style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       trailing: IconButton(
-                        icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error, size: 20),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: theme.colorScheme.error,
+                          size: 20,
+                        ),
                         onPressed: () =>
                             _delete(context, ref, pin['id'] as String, label),
                       ),

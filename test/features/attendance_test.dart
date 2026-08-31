@@ -8,46 +8,47 @@ AttendanceEntry entry(
   String? stopId,
   AttendanceState state = AttendanceState.waiting,
   DateTime? scannedAt,
-}) =>
-    AttendanceEntry(
-      id: id,
-      passengerId: 'passenger-$id',
-      name: 'Passenger $id',
-      stopId: stopId ?? 'stop-$stopOrder',
-      stopName: 'Stop $stopOrder',
-      stopOrder: stopOrder,
-      state: state,
-      scannedAt: scannedAt,
-    );
+}) => AttendanceEntry(
+  id: id,
+  passengerId: 'passenger-$id',
+  name: 'Passenger $id',
+  stopId: stopId ?? 'stop-$stopOrder',
+  stopName: 'Stop $stopOrder',
+  stopOrder: stopOrder,
+  state: state,
+  scannedAt: scannedAt,
+);
 
 void main() {
   // ─── Initial state (mirrors createAttendanceRecords in the repository) ───────
   group('initialState', () {
     test('passenger with a seat booking today starts waiting', () {
-      expect(AttendanceMachine.initialState(hasSeatBooking: true),
-          AttendanceState.waiting);
+      expect(
+        AttendanceMachine.initialState(hasSeatBooking: true),
+        AttendanceState.waiting,
+      );
     });
 
     test('passenger without a booking starts absent', () {
-      expect(AttendanceMachine.initialState(hasSeatBooking: false),
-          AttendanceState.absent);
+      expect(
+        AttendanceMachine.initialState(hasSeatBooking: false),
+        AttendanceState.absent,
+      );
     });
   });
 
   // ─── Scan (mark present) ──────────────────────────────────────────────────────
   group('markPresent', () {
     late List<AttendanceEntry> list;
-    setUp(() => list = [
-          entry('p1'),
-          entry('p2'),
-          entry('p3', stopOrder: 2),
-        ]);
+    setUp(() => list = [entry('p1'), entry('p2'), entry('p3', stopOrder: 2)]);
 
     test('marks the scanned passenger present and stamps scannedAt', () {
       final at = DateTime(2026, 9, 10, 7, 30);
       expect(AttendanceMachine.markPresent(list, 'p1', scannedAt: at), isTrue);
-      expect(list.firstWhere((a) => a.id == 'p1').state,
-          AttendanceState.present);
+      expect(
+        list.firstWhere((a) => a.id == 'p1').state,
+        AttendanceState.present,
+      );
       expect(list.firstWhere((a) => a.id == 'p1').scannedAt, at);
     });
 
@@ -55,26 +56,39 @@ void main() {
       final before = DateTime.now();
       AttendanceMachine.markPresent(list, 'p1');
       final scanned = list.firstWhere((a) => a.id == 'p1').scannedAt!;
-      expect(scanned.isBefore(before) || scanned == before ||
-          scanned.isAfter(before), isTrue);
+      expect(
+        scanned.isBefore(before) ||
+            scanned == before ||
+            scanned.isAfter(before),
+        isTrue,
+      );
     });
 
     test('does not affect other passengers', () {
       AttendanceMachine.markPresent(list, 'p1');
-      expect(list.firstWhere((a) => a.id == 'p2').state,
-          AttendanceState.waiting);
-      expect(list.firstWhere((a) => a.id == 'p3').state,
-          AttendanceState.waiting);
+      expect(
+        list.firstWhere((a) => a.id == 'p2').state,
+        AttendanceState.waiting,
+      );
+      expect(
+        list.firstWhere((a) => a.id == 'p3').state,
+        AttendanceState.waiting,
+      );
     });
 
-    test('rescanning overwrites the scan timestamp (repository semantics)',
-        () {
-      AttendanceMachine.markPresent(list, 'p1',
-          scannedAt: DateTime(2026, 9, 10, 7, 0));
+    test('rescanning overwrites the scan timestamp (repository semantics)', () {
+      AttendanceMachine.markPresent(
+        list,
+        'p1',
+        scannedAt: DateTime(2026, 9, 10, 7, 0),
+      );
       final firstScan = list.firstWhere((a) => a.id == 'p1').scannedAt;
 
-      AttendanceMachine.markPresent(list, 'p1',
-          scannedAt: DateTime(2026, 9, 10, 7, 15));
+      AttendanceMachine.markPresent(
+        list,
+        'p1',
+        scannedAt: DateTime(2026, 9, 10, 7, 15),
+      );
       final e = list.firstWhere((a) => a.id == 'p1');
       expect(e.state, AttendanceState.present);
       expect(e.scannedAt, isNot(firstScan));
@@ -94,44 +108,57 @@ void main() {
   // ─── Advance stop ─────────────────────────────────────────────────────────────
   group('markStopWaitingMissing', () {
     late List<AttendanceEntry> list;
-    setUp(() => list = [
-          entry('p1', stopId: 'stop-1'),
-          entry('p2', stopId: 'stop-1'),
-          entry('p3', stopOrder: 2, stopId: 'stop-2'),
-          entry('p4', stopOrder: 3, stopId: 'stop-3'),
-        ]);
+    setUp(
+      () => list = [
+        entry('p1', stopId: 'stop-1'),
+        entry('p2', stopId: 'stop-1'),
+        entry('p3', stopOrder: 2, stopId: 'stop-2'),
+        entry('p4', stopOrder: 3, stopId: 'stop-3'),
+      ],
+    );
 
     test('marks waiting passengers at the passed stop as missing', () {
       final changed = AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
       expect(changed, 2);
-      expect(list.firstWhere((a) => a.id == 'p1').state,
-          AttendanceState.missing);
-      expect(list.firstWhere((a) => a.id == 'p2').state,
-          AttendanceState.missing);
+      expect(
+        list.firstWhere((a) => a.id == 'p1').state,
+        AttendanceState.missing,
+      );
+      expect(
+        list.firstWhere((a) => a.id == 'p2').state,
+        AttendanceState.missing,
+      );
     });
 
     test('does not affect passengers at other stops', () {
       AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
-      expect(list.firstWhere((a) => a.id == 'p3').state,
-          AttendanceState.waiting);
-      expect(list.firstWhere((a) => a.id == 'p4').state,
-          AttendanceState.waiting);
+      expect(
+        list.firstWhere((a) => a.id == 'p3').state,
+        AttendanceState.waiting,
+      );
+      expect(
+        list.firstWhere((a) => a.id == 'p4').state,
+        AttendanceState.waiting,
+      );
     });
 
     test('does not change already-present passengers', () {
       AttendanceMachine.markPresent(list, 'p1');
       final changed = AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
       expect(changed, 1);
-      expect(list.firstWhere((a) => a.id == 'p1').state,
-          AttendanceState.present);
-      expect(list.firstWhere((a) => a.id == 'p2').state,
-          AttendanceState.missing);
+      expect(
+        list.firstWhere((a) => a.id == 'p1').state,
+        AttendanceState.present,
+      );
+      expect(
+        list.firstWhere((a) => a.id == 'p2').state,
+        AttendanceState.missing,
+      );
     });
 
     test('is idempotent — second pass changes nothing', () {
       AttendanceMachine.markStopWaitingMissing(list, 'stop-1');
-      expect(
-          AttendanceMachine.markStopWaitingMissing(list, 'stop-1'), 0);
+      expect(AttendanceMachine.markStopWaitingMissing(list, 'stop-1'), 0);
     });
 
     test('returns 0 for an unknown stop', () {
@@ -150,14 +177,22 @@ void main() {
       ];
       final changed = AttendanceMachine.markRemainingAbsent(list);
       expect(changed, 2);
-      expect(list.firstWhere((a) => a.id == 'p1').state,
-          AttendanceState.present); // unchanged
-      expect(list.firstWhere((a) => a.id == 'p2').state,
-          AttendanceState.missing); // unchanged
-      expect(list.firstWhere((a) => a.id == 'p3').state,
-          AttendanceState.absent); // was waiting
-      expect(list.firstWhere((a) => a.id == 'p4').state,
-          AttendanceState.absent); // was waiting
+      expect(
+        list.firstWhere((a) => a.id == 'p1').state,
+        AttendanceState.present,
+      ); // unchanged
+      expect(
+        list.firstWhere((a) => a.id == 'p2').state,
+        AttendanceState.missing,
+      ); // unchanged
+      expect(
+        list.firstWhere((a) => a.id == 'p3').state,
+        AttendanceState.absent,
+      ); // was waiting
+      expect(
+        list.firstWhere((a) => a.id == 'p4').state,
+        AttendanceState.absent,
+      ); // was waiting
     });
 
     test('all present at end of a perfect trip', () {
@@ -255,12 +290,9 @@ void main() {
   // ─── DB state parsing ─────────────────────────────────────────────────────────
   group('AttendanceStateX.fromName', () {
     test('parses all known state names', () {
-      expect(AttendanceStateX.fromName('waiting'),
-          AttendanceState.waiting);
-      expect(AttendanceStateX.fromName('present'),
-          AttendanceState.present);
-      expect(AttendanceStateX.fromName('missing'),
-          AttendanceState.missing);
+      expect(AttendanceStateX.fromName('waiting'), AttendanceState.waiting);
+      expect(AttendanceStateX.fromName('present'), AttendanceState.present);
+      expect(AttendanceStateX.fromName('missing'), AttendanceState.missing);
       expect(AttendanceStateX.fromName('absent'), AttendanceState.absent);
     });
 

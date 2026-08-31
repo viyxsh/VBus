@@ -62,7 +62,9 @@ class TrackingRepository {
 
   /// The latest known bus location for a specific trip.
   Future<Map<String, dynamic>?> busLocationForTrip(
-      String busId, String tripId) async {
+    String busId,
+    String tripId,
+  ) async {
     final loc = await supabase
         .from(SupabaseConstants.busLocations)
         .select('latitude, longitude, speed_kmh, trip_id')
@@ -75,7 +77,8 @@ class TrackingRepository {
   /// Realtime stream of a trip row (used to track current_stop_index).
   Stream<List<Map<String, dynamic>>> watchTrip(String tripId) => supabase
       .from(SupabaseConstants.trips)
-      .stream(primaryKey: ['id']).eq('id', tripId);
+      .stream(primaryKey: ['id'])
+      .eq('id', tripId);
 
   /// Subscribes to all bus_locations changes for a bus, invoking [onRow] with
   /// each new record. Returns the channel so the caller can unsubscribe.

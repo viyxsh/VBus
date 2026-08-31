@@ -25,9 +25,11 @@ class _ConductorEditProfileSheetState
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(
-        text: widget.profile['display_name'] as String? ?? '');
+      text: widget.profile['display_name'] as String? ?? '',
+    );
     _phoneCtrl = TextEditingController(
-        text: widget.profile['phone'] as String? ?? '');
+      text: widget.profile['phone'] as String? ?? '',
+    );
   }
 
   @override
@@ -40,7 +42,9 @@ class _ConductorEditProfileSheetState
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await ref.read(busRepositoryProvider).updateConductorProfile(
+      await ref
+          .read(busRepositoryProvider)
+          .updateConductorProfile(
             displayName: _nameCtrl.text.trim(),
             phone: _phoneCtrl.text.trim(),
           );
@@ -49,10 +53,12 @@ class _ConductorEditProfileSheetState
     } catch (e) {
       debugPrint('[PROFILE] save error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Failed to save profile'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to save profile'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -63,7 +69,11 @@ class _ConductorEditProfileSheetState
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+        20,
+        20,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,7 +85,9 @@ class _ConductorEditProfileSheetState
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
             decoration: sheetInputDecoration(
-                S.t(context, 'Display Name'), Icons.person_outline),
+              S.t(context, 'Display Name'),
+              Icons.person_outline,
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -83,8 +95,10 @@ class _ConductorEditProfileSheetState
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _save(),
-            decoration:
-                sheetInputDecoration(S.t(context, 'Phone Number'), Icons.phone_outlined),
+            decoration: sheetInputDecoration(
+              S.t(context, 'Phone Number'),
+              Icons.phone_outlined,
+            ),
           ),
           const SizedBox(height: 24),
           FilledButton(
@@ -92,16 +106,22 @@ class _ConductorEditProfileSheetState
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _saving
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(S.t(context, 'Save Changes'),
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    S.t(context, 'Save Changes'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
           ),
         ],
       ),

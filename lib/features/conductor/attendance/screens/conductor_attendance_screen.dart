@@ -45,7 +45,7 @@ class _ConductorAttendanceScreenState
 
   StreamSubscription<Position>? _locationSub;
   int _lastAdvancedIdx = -1; // prevents re-triggering the same stop
-  DateTime? _lastGpsTime;   // for GPS-loss detection
+  DateTime? _lastGpsTime; // for GPS-loss detection
   Timer? _gpsWatchdog;
   bool _gpsLost = false;
   bool _offRoute = false;
@@ -68,21 +68,24 @@ class _ConductorAttendanceScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final cred = await ref.read(trackingRepositoryProvider).conductorBusInfo();
+      final cred = await ref
+          .read(trackingRepositoryProvider)
+          .conductorBusInfo();
 
       _conductorCredId = cred['id'] as String;
       _busId = cred['bus_id'] as String;
       _routeId = (cred['buses'] as Map)['route_id'] as String;
 
-      _stops = (await ref
-          .read(trackingRepositoryProvider)
-          .stopsForRoute(_routeId))
-        ..sort((a, b) => (a['stop_order'] as num).compareTo(b['stop_order'] as num));
+      _stops =
+          (await ref.read(trackingRepositoryProvider).stopsForRoute(_routeId))
+            ..sort(
+              (a, b) =>
+                  (a['stop_order'] as num).compareTo(b['stop_order'] as num),
+            );
 
-      _trip = await ref.read(attendanceRepositoryProvider).currentOrLastTrip(
-            busId: _busId,
-            conductorId: _conductorCredId,
-          );
+      _trip = await ref
+          .read(attendanceRepositoryProvider)
+          .currentOrLastTrip(busId: _busId, conductorId: _conductorCredId);
 
       if (_trip != null) {
         await _loadAttendances();
@@ -147,7 +150,9 @@ class _ConductorAttendanceScreenState
 
       final roster = await attendance.approvedRoster(_busId);
       await attendance.createAttendanceRecords(
-        _trip!['id'] as String, roster, _busId,
+        _trip!['id'] as String,
+        roster,
+        _busId,
       );
 
       _lastAdvancedIdx = 0;
@@ -156,10 +161,12 @@ class _ConductorAttendanceScreenState
     } catch (e) {
       debugPrint('[ATTENDANCE] start trip error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(friendlyError(e, fallback: 'Failed to start trip.')),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError(e, fallback: 'Failed to start trip.')),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _processing = false);
@@ -215,7 +222,7 @@ class _ConductorAttendanceScreenState
     int nearestIdx = -1;
     double minDist = double.infinity;
     for (int i = 0; i < _stops.length; i++) {
-      final lat = (_stops[i]['latitude']  as num?)?.toDouble() ?? 0;
+      final lat = (_stops[i]['latitude'] as num?)?.toDouble() ?? 0;
       final lng = (_stops[i]['longitude'] as num?)?.toDouble() ?? 0;
       if (lat == 0 && lng == 0) continue;
       final d = haversineKm(pos.latitude, pos.longitude, lat, lng);
@@ -233,8 +240,8 @@ class _ConductorAttendanceScreenState
     // Only auto-advance if the bus is actually moving (>5 km/h)
     // OR within 50m (definitively at the stop even if briefly stopped).
     final speedKmh = (pos.speed * 3.6).clamp(0.0, double.infinity);
-    final atStop   = minDist < 0.05;
-    final moving   = speedKmh > 5.0;
+    final atStop = minDist < 0.05;
+    final moving = speedKmh > 5.0;
     if (!atStop && !moving) return;
 
     _advanceTo(nearestIdx);
@@ -247,7 +254,7 @@ class _ConductorAttendanceScreenState
 
     // 1. Check distance to each stop
     for (final stop in _stops) {
-      final slat = (stop['latitude']  as num?)?.toDouble() ?? 0;
+      final slat = (stop['latitude'] as num?)?.toDouble() ?? 0;
       final slng = (stop['longitude'] as num?)?.toDouble() ?? 0;
       if (slat == 0 && slng == 0) continue;
       if (haversineKm(lat, lng, slat, slng) < thresholdKm) return false;
@@ -255,10 +262,10 @@ class _ConductorAttendanceScreenState
 
     // 2. Check distance to each segment between consecutive stops
     for (int i = 0; i < _stops.length - 1; i++) {
-      final aLat = (_stops[i]['latitude']     as num?)?.toDouble() ?? 0;
-      final aLng = (_stops[i]['longitude']    as num?)?.toDouble() ?? 0;
-      final bLat = (_stops[i + 1]['latitude']   as num?)?.toDouble() ?? 0;
-      final bLng = (_stops[i + 1]['longitude']  as num?)?.toDouble() ?? 0;
+      final aLat = (_stops[i]['latitude'] as num?)?.toDouble() ?? 0;
+      final aLng = (_stops[i]['longitude'] as num?)?.toDouble() ?? 0;
+      final bLat = (_stops[i + 1]['latitude'] as num?)?.toDouble() ?? 0;
+      final bLng = (_stops[i + 1]['longitude'] as num?)?.toDouble() ?? 0;
       if (aLat == 0 && aLng == 0) continue;
       if (bLat == 0 && bLng == 0) continue;
       if (pointToSegmentKm(lat, lng, aLat, aLng, bLat, bLng) < thresholdKm) {
@@ -280,9 +287,13 @@ class _ConductorAttendanceScreenState
       // Mark waiting passengers at all stops being passed as missing
       for (int i = current; i < newIdx; i++) {
         await attendance.markStopWaitingMissing(
-            tripId, _stops[i]['id'] as String);
+          tripId,
+          _stops[i]['id'] as String,
+        );
         AttendanceMachine.markStopWaitingMissing(
-            _attendances, _stops[i]['id'] as String);
+          _attendances,
+          _stops[i]['id'] as String,
+        );
       }
 
       await attendance.updateCurrentStopIndex(tripId, newIdx);
@@ -303,18 +314,21 @@ class _ConductorAttendanceScreenState
       builder: (ctx) => AlertDialog(
         title: const Text('End Trip'),
         content: const Text(
-            'All remaining waiting passengers will be marked absent. End the trip?'),
+          'All remaining waiting passengers will be marked absent. End the trip?',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               _endTrip();
             },
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('End Trip'),
           ),
         ],
@@ -334,10 +348,18 @@ class _ConductorAttendanceScreenState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Advance to next stop?'),
-        content: Text('Mark all waiting passengers at the current stop as missing and move to $next?'),
+        content: Text(
+          'Mark all waiting passengers at the current stop as missing and move to $next?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Advance')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Advance'),
+          ),
         ],
       ),
     );
@@ -368,14 +390,16 @@ class _ConductorAttendanceScreenState
     if (_scanning) return;
     setState(() => _scanning = true);
     try {
-      final picked = await ImagePicker()
-          .pickImage(source: ImageSource.camera, imageQuality: 90);
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 90,
+      );
       if (picked == null) return;
 
-      final recognizer =
-          TextRecognizer(script: TextRecognitionScript.latin);
-      final result = await recognizer
-          .processImage(InputImage.fromFilePath(picked.path));
+      final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final result = await recognizer.processImage(
+        InputImage.fromFilePath(picked.path),
+      );
       await recognizer.close();
 
       debugPrint('[OCR] text: ${result.text}');
@@ -385,11 +409,14 @@ class _ConductorAttendanceScreenState
       // No text detected at all — card not in frame or image too dark/blurry
       if (rawText.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'No text detected. Ensure the ID card fills the frame and the lighting is adequate.'),
-            duration: Duration(seconds: 3),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No text detected. Ensure the ID card fills the frame and the lighting is adequate.',
+              ),
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
         return;
       }
@@ -400,12 +427,15 @@ class _ConductorAttendanceScreenState
       if (regNumber == null) {
         debugPrint('[OCR] text found but no reg number: $rawText');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
                 'Text detected but no registration number found. '
-                'Hold the card flat and steady, and try again.'),
-            duration: Duration(seconds: 3),
-          ));
+                'Hold the card flat and steady, and try again.',
+              ),
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
         return;
       }
@@ -414,11 +444,12 @@ class _ConductorAttendanceScreenState
     } catch (e) {
       debugPrint('[ATTENDANCE] scan error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Camera error. Please try again.'),
-          duration: Duration(seconds: 2),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Camera error. Please try again.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _scanning = false);
@@ -431,11 +462,14 @@ class _ConductorAttendanceScreenState
 
     if (passenger == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              '$regNumber — no account found with this registration number.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$regNumber — no account found with this registration number.',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
       return;
     }
@@ -448,31 +482,37 @@ class _ConductorAttendanceScreenState
 
     if (passengerBusId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('$name is not enrolled in any bus.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name is not enrolled in any bus.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
       return;
     }
 
     if (passengerBusId != _busId) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('$name belongs to Bus ${busNumber ?? passengerBusId}.'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$name belongs to Bus ${busNumber ?? passengerBusId}.',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
       return;
     }
 
-    final record =
-        _attendances.where((a) => a.passengerId == pid).firstOrNull;
+    final record = _attendances.where((a) => a.passengerId == pid).firstOrNull;
 
     if (record == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$name has no record for this trip')));
+          SnackBar(content: Text('$name has no record for this trip')),
+        );
       }
       return;
     }
@@ -480,7 +520,8 @@ class _ConductorAttendanceScreenState
     if (record.state == AttendanceState.present) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$name is already marked present')));
+          SnackBar(content: Text('$name is already marked present')),
+        );
       }
       return;
     }
@@ -497,11 +538,13 @@ class _ConductorAttendanceScreenState
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Mark Present')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Mark Present'),
+            ),
           ],
         ),
       );
@@ -512,11 +555,13 @@ class _ConductorAttendanceScreenState
     AttendanceMachine.markPresent(_attendances, record.id);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('✓ $name marked present'),
-        backgroundColor: Colors.green.shade700,
-        duration: const Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ $name marked present'),
+          backgroundColor: Colors.green.shade700,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
 
     await _loadAttendances();
@@ -538,11 +583,13 @@ class _ConductorAttendanceScreenState
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Mark Present')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Mark Present'),
+            ),
           ],
         ),
       );
@@ -553,20 +600,24 @@ class _ConductorAttendanceScreenState
       await ref.read(attendanceRepositoryProvider).markPresent(item.id);
       AttendanceMachine.markPresent(_attendances, item.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('✓ $name marked present'),
-          backgroundColor: Colors.green.shade700,
-          duration: const Duration(seconds: 2),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ $name marked present'),
+            backgroundColor: Colors.green.shade700,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
       await _loadAttendances();
     } catch (e) {
       debugPrint('[ATTENDANCE] mark present error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Failed to mark present'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to mark present'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     }
   }
@@ -590,16 +641,20 @@ class _ConductorAttendanceScreenState
               child: TextButton(
                 onPressed: _processing ? null : _confirmEndTrip,
                 style: TextButton.styleFrom(
-                  backgroundColor:
-                      theme.colorScheme.error.withValues(alpha: 0.10),
+                  backgroundColor: theme.colorScheme.error.withValues(
+                    alpha: 0.10,
+                  ),
                   foregroundColor: theme.colorScheme.error,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
                 child: Text(S.t(context, 'End Trip')),
               ),
@@ -609,10 +664,10 @@ class _ConductorAttendanceScreenState
       body: _loading
           ? const Center(child: LottieLoading())
           : _trip == null
-              ? _buildNoTrip(theme)
-              : _trip!['state'] == 'ended'
-                  ? _buildTripEnded(theme)
-                  : _buildAttendanceView(theme),
+          ? _buildNoTrip(theme)
+          : _trip!['state'] == 'ended'
+          ? _buildTripEnded(theme)
+          : _buildAttendanceView(theme),
       // OCR (ML Kit) is mobile-only — hide the scan action on web.
       floatingActionButton: (isOngoing && !kIsWeb)
           ? FloatingActionButton.extended(
@@ -624,8 +679,19 @@ class _ConductorAttendanceScreenState
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : SvgPicture.asset('assets/icons/qr-scan.svg', width: 22, height: 22, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : SvgPicture.asset(
+                      'assets/icons/qr-scan.svg',
+                      width: 22,
+                      height: 22,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
               label: Text(S.t(context, 'Scan ID')),
             )
           : null,
@@ -643,50 +709,78 @@ class _ConductorAttendanceScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isDark
                       ? [const Color(0xFF1A2580), const Color(0xFF0D1560)]
                       : [const Color(0xFF3D5AFE), const Color(0xFF3D3D8F)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF3D5AFE).withValues(alpha: 0.3),
-                    blurRadius: 16, offset: const Offset(0, 6),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Center(
-                child: SvgPicture.asset('assets/icons/bus.svg',
-                    width: 36, height: 36,
-                    colorFilter: const ColorFilter.mode(
-                        Colors.white, BlendMode.srcIn)),
+                child: SvgPicture.asset(
+                  'assets/icons/bus.svg',
+                  width: 36,
+                  height: 36,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            Text(S.t(context, 'No Active Trip'),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              S.t(context, 'No Active Trip'),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(S.t(context, 'Start a trip to begin taking attendance'),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            Text(
+              S.t(context, 'Start a trip to begin taking attendance'),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 28),
             FilledButton.icon(
               onPressed: _processing ? null : _startTrip,
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 14,
+                ),
               ),
               icon: _processing
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.play_arrow_rounded),
-              label: Text(S.t(context, 'Start Trip'),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              label: Text(
+                S.t(context, 'Start Trip'),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -703,34 +797,59 @@ class _ConductorAttendanceScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 100, height: 100,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
                 color: Colors.green.shade50,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.green.shade200, width: 2),
               ),
-              child: Icon(Icons.check_rounded,
-                  size: 52, color: Colors.green.shade600),
+              child: Icon(
+                Icons.check_rounded,
+                size: 52,
+                color: Colors.green.shade600,
+              ),
             ),
             const SizedBox(height: 20),
-            Text(S.t(context, 'Trip Complete'),
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              S.t(context, 'Trip Complete'),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 16),
             // Summary chips
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _summaryPill('${s['present']}', S.t(context, 'Present'), Colors.green.shade700, Colors.green.shade50),
+                _summaryPill(
+                  '${s['present']}',
+                  S.t(context, 'Present'),
+                  Colors.green.shade700,
+                  Colors.green.shade50,
+                ),
                 const SizedBox(width: 8),
-                _summaryPill('${s['missing']}', S.t(context, 'Missed'), Colors.purple.shade400, Colors.purple.shade50),
+                _summaryPill(
+                  '${s['missing']}',
+                  S.t(context, 'Missed'),
+                  Colors.purple.shade400,
+                  Colors.purple.shade50,
+                ),
                 const SizedBox(width: 8),
-                _summaryPill('${s['absent']}', S.t(context, 'Absent'), Colors.red.shade600, Colors.red.shade50),
+                _summaryPill(
+                  '${s['absent']}',
+                  S.t(context, 'Absent'),
+                  Colors.red.shade600,
+                  Colors.red.shade50,
+                ),
               ],
             ),
             const SizedBox(height: 28),
             FilledButton.icon(
-              onPressed: () => setState(() { _trip = null; _attendances = []; }),
+              onPressed: () => setState(() {
+                _trip = null;
+                _attendances = [];
+              }),
               icon: const Icon(Icons.restart_alt_rounded),
               label: Text(S.t(context, 'New Trip')),
             ),
@@ -751,27 +870,23 @@ class _ConductorAttendanceScreenState
       margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
       decoration: BoxDecoration(
-        color: Colors.amber.shade800
-            .withValues(alpha: isDark ? 0.18 : 0.08),
+        color: Colors.amber.shade800.withValues(alpha: isDark ? 0.18 : 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: Colors.amber.shade700.withValues(alpha: 0.4)),
+        border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
-          Icon(icon,
-              size: 18,
-              color: isDark
-                  ? Colors.amber.shade300
-                  : Colors.amber.shade800),
+          Icon(
+            icon,
+            size: 18,
+            color: isDark ? Colors.amber.shade300 : Colors.amber.shade800,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: TextStyle(
-                color: isDark
-                    ? Colors.amber.shade200
-                    : Colors.amber.shade900,
+                color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -785,13 +900,18 @@ class _ConductorAttendanceScreenState
                 backgroundColor: Colors.amber.shade700,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 textStyle: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               child: Text(S.t(context, 'Next Stop →')),
             ),
@@ -801,7 +921,12 @@ class _ConductorAttendanceScreenState
     );
   }
 
-  Widget _summaryPill(String count, String label, Color textColor, Color bgColor) {
+  Widget _summaryPill(
+    String count,
+    String label,
+    Color textColor,
+    Color bgColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -811,10 +936,22 @@ class _ConductorAttendanceScreenState
       ),
       child: Column(
         children: [
-          Text(count, style: TextStyle(
-            color: textColor, fontSize: 20, fontWeight: FontWeight.w700)),
-          Text(label, style: TextStyle(
-            color: textColor, fontSize: 11, fontWeight: FontWeight.w500)),
+          Text(
+            count,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -825,18 +962,20 @@ class _ConductorAttendanceScreenState
     final currentStop = currentIdx < _stops.length ? _stops[currentIdx] : null;
     final isLastStop = currentIdx >= _stops.length - 1;
     final isDark = theme.brightness == Brightness.dark;
-    final showNextStop = _trip!['state'] == 'ongoing' &&
+    final showNextStop =
+        _trip!['state'] == 'ongoing' &&
         (_trip!['current_stop_index'] as num).toInt() < _stops.length - 1;
     final s = _stats();
     final locColor = _gpsLost
         ? Colors.amber.shade700
         : _offRoute
-            ? Colors.red.shade600
-            : theme.colorScheme.primary;
+        ? Colors.red.shade600
+        : theme.colorScheme.primary;
 
     final filtered = _attendances.where((a) {
       final matchesState = _filterState == null || a.state == _filterState;
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           a.name.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesState && matchesSearch;
     }).toList();
@@ -867,12 +1006,11 @@ class _ConductorAttendanceScreenState
                 : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color:
-                    theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black
-                    .withValues(alpha: isDark ? 0.15 : 0.05),
+                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -891,8 +1029,8 @@ class _ConductorAttendanceScreenState
                   _gpsLost
                       ? Icons.gps_off_rounded
                       : _offRoute
-                          ? Icons.map_outlined
-                          : Icons.location_on_rounded,
+                      ? Icons.map_outlined
+                      : Icons.location_on_rounded,
                   size: 18,
                   color: locColor,
                 ),
@@ -929,7 +1067,9 @@ class _ConductorAttendanceScreenState
               if (isLastStop)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(6),
@@ -951,16 +1091,41 @@ class _ConductorAttendanceScreenState
           padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
           child: Row(
             children: [
-              _statChip(S.t(context, 'Total'), _attendances.length,
-                  null, null, theme),
-              _statChip(S.t(context, 'Present'), s['present']!,
-                  Colors.green.shade700, AttendanceState.present, theme),
-              _statChip(S.t(context, 'Missed'), s['missing']!,
-                  Colors.purple.shade400, AttendanceState.missing, theme),
-              _statChip(S.t(context, 'Absent'), s['absent']!,
-                  theme.colorScheme.error, AttendanceState.absent, theme),
-              _statChip(S.t(context, 'Waiting'), s['waiting']!,
-                  Colors.amber.shade700, AttendanceState.waiting, theme),
+              _statChip(
+                S.t(context, 'Total'),
+                _attendances.length,
+                null,
+                null,
+                theme,
+              ),
+              _statChip(
+                S.t(context, 'Present'),
+                s['present']!,
+                Colors.green.shade700,
+                AttendanceState.present,
+                theme,
+              ),
+              _statChip(
+                S.t(context, 'Missed'),
+                s['missing']!,
+                Colors.purple.shade400,
+                AttendanceState.missing,
+                theme,
+              ),
+              _statChip(
+                S.t(context, 'Absent'),
+                s['absent']!,
+                theme.colorScheme.error,
+                AttendanceState.absent,
+                theme,
+              ),
+              _statChip(
+                S.t(context, 'Waiting'),
+                s['waiting']!,
+                Colors.amber.shade700,
+                AttendanceState.waiting,
+                theme,
+              ),
             ],
           ),
         ),
@@ -973,39 +1138,51 @@ class _ConductorAttendanceScreenState
             decoration: InputDecoration(
               hintText: S.t(context, 'Search'),
               hintStyle: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant
-                    .withValues(alpha: 0.6),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.6,
+                ),
                 fontSize: 14,
               ),
               prefixIcon: Padding(
                 padding: const EdgeInsets.all(13),
-                child: SvgPicture.asset('assets/icons/search.svg',
-                    width: 18,
-                    height: 18,
-                    colorFilter: ColorFilter.mode(
-                        theme.colorScheme.onSurfaceVariant,
-                        BlendMode.srcIn)),
+                child: SvgPicture.asset(
+                  'assets/icons/search.svg',
+                  width: 18,
+                  height: 18,
+                  colorFilter: ColorFilter.mode(
+                    theme.colorScheme.onSurfaceVariant,
+                    BlendMode.srcIn,
+                  ),
+                ),
               ),
               filled: true,
               fillColor: isDark
                   ? theme.colorScheme.surfaceContainerHigh
                   : Colors.white,
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                    color: theme.colorScheme.outlineVariant, width: 1),
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                    color: theme.colorScheme.outlineVariant, width: 1),
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                    color: theme.colorScheme.primary, width: 1.5),
+                  color: theme.colorScheme.primary,
+                  width: 1.5,
+                ),
               ),
             ),
           ),
@@ -1017,9 +1194,13 @@ class _ConductorAttendanceScreenState
             onRefresh: _loadAttendances,
             child: filtered.isEmpty
                 ? Center(
-                    child: Text(S.t(context, 'No results'),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant)))
+                    child: Text(
+                      S.t(context, 'No results'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
                     itemCount: filtered.length,
@@ -1032,8 +1213,12 @@ class _ConductorAttendanceScreenState
   }
 
   Widget _statChip(
-      String label, int count, Color? color, AttendanceState? filterValue,
-      ThemeData theme) {
+    String label,
+    int count,
+    Color? color,
+    AttendanceState? filterValue,
+    ThemeData theme,
+  ) {
     final isSelected = _filterState == filterValue;
     final isDark = theme.brightness == Brightness.dark;
     final chipColor = color ?? theme.colorScheme.primary;
@@ -1048,28 +1233,28 @@ class _ConductorAttendanceScreenState
             color: isSelected
                 ? chipColor
                 : (isDark
-                    ? theme.colorScheme.surfaceContainerHigh
-                    : Colors.white),
+                      ? theme.colorScheme.surfaceContainerHigh
+                      : Colors.white),
             borderRadius: BorderRadius.circular(12),
             border: isSelected
                 ? null
-                : Border.all(
-                    color: theme.colorScheme.outlineVariant, width: 1),
+                : Border.all(color: theme.colorScheme.outlineVariant, width: 1),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
                       color: chipColor.withValues(alpha: 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
-                    )
+                    ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDark ? 0.15 : 0.06),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.15 : 0.06,
+                      ),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ],
           ),
           child: Material(
@@ -1078,7 +1263,8 @@ class _ConductorAttendanceScreenState
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () => setState(
-                  () => _filterState = isSelected ? null : filterValue),
+                () => _filterState = isSelected ? null : filterValue,
+              ),
               splashColor: isSelected
                   ? Colors.white.withValues(alpha: 0.2)
                   : chipColor.withValues(alpha: 0.1),
@@ -1132,7 +1318,8 @@ class _ConductorAttendanceScreenState
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: item.state == AttendanceState.waiting ||
+        onTap:
+            item.state == AttendanceState.waiting ||
                 item.state == AttendanceState.missing ||
                 item.state == AttendanceState.absent
             ? () => _manualMarkPresent(item)
@@ -1152,8 +1339,7 @@ class _ConductorAttendanceScreenState
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black
-                    .withValues(alpha: isDark ? 0.18 : 0.05),
+                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -1171,9 +1357,7 @@ class _ConductorAttendanceScreenState
                 ),
                 child: Center(
                   child: Text(
-                    item.name.isNotEmpty
-                        ? item.name[0].toUpperCase()
-                        : '?',
+                    item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1200,9 +1384,11 @@ class _ConductorAttendanceScreenState
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined,
-                            size: 12,
-                            color: theme.colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
@@ -1223,7 +1409,9 @@ class _ConductorAttendanceScreenState
               // Status badge
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(8),
@@ -1250,11 +1438,11 @@ class _ConductorAttendanceScreenState
   }
 
   Color _stateColor(AttendanceState state) => switch (state) {
-        AttendanceState.present => Colors.green.shade700,
-        AttendanceState.missing => Colors.purple.shade400,
-        AttendanceState.absent => Colors.red.shade700,
-        AttendanceState.waiting => Colors.amber.shade700,
-      };
+    AttendanceState.present => Colors.green.shade700,
+    AttendanceState.missing => Colors.purple.shade400,
+    AttendanceState.absent => Colors.red.shade700,
+    AttendanceState.waiting => Colors.amber.shade700,
+  };
 
   Map<String, int> _stats() => AttendanceMachine.stats(_attendances);
 }

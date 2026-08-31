@@ -56,9 +56,7 @@ class ChatRepository {
     if (since != null) {
       query = query.gte('sent_at', since.toIso8601String());
     }
-    final data = await query
-        .order('sent_at', ascending: false)
-        .limit(limit);
+    final data = await query.order('sent_at', ascending: false).limit(limit);
     return (data as List)
         .map((m) => ChatMessage.fromMap(m as Map<String, dynamic>))
         .toList();
@@ -72,11 +70,14 @@ class ChatRepository {
     required String translatedText,
   }) async {
     if (AppConfig.demoMode) return;
-    await supabase.rpc('save_translation', params: {
-      'p_message_id': messageId,
-      'p_language_code': languageCode,
-      'p_translated': translatedText,
-    });
+    await supabase.rpc(
+      'save_translation',
+      params: {
+        'p_message_id': messageId,
+        'p_language_code': languageCode,
+        'p_translated': translatedText,
+      },
+    );
   }
 
   /// Live stream of a room's messages, newest first. Emits the initial page
@@ -106,8 +107,9 @@ class ChatRepository {
 
     Future<void> init() async {
       try {
-        messages
-            .addAll(await recentMessages(roomId, limit: limit, since: since));
+        messages.addAll(
+          await recentMessages(roomId, limit: limit, since: since),
+        );
       } catch (e, st) {
         if (!controller.isClosed) controller.addError(e, st);
         return;
@@ -212,7 +214,8 @@ class ChatRepository {
       final data = await supabase
           .from(SupabaseConstants.passengers)
           .select(
-              'name, email, phone, user_type, institute_id, bus_stops(name)')
+            'name, email, phone, user_type, institute_id, bus_stops(name)',
+          )
           .eq('id', passengerId)
           .single();
       return Map<String, dynamic>.from(data);
@@ -244,12 +247,15 @@ class ChatRepository {
   /// considered (to hide broadcast previews that predate a passenger's
   /// approval).
   Future<Map<String, Map<String, dynamic>>> _lastMessageByRoom(
-      List<String> roomIds, {DateTime? since}) async {
+    List<String> roomIds, {
+    DateTime? since,
+  }) async {
     final result = <String, Map<String, dynamic>>{};
     if (roomIds.isEmpty) return result;
-    final rows = await _messagesForRooms(roomIds, since: since)
-        .order('sent_at', ascending: false)
-        .limit(roomIds.length * 10);
+    final rows = await _messagesForRooms(
+      roomIds,
+      since: since,
+    ).order('sent_at', ascending: false).limit(roomIds.length * 10);
     for (final m in rows) {
       final rid = m['chat_room_id'] as String;
       result.putIfAbsent(rid, () => m);
@@ -258,12 +264,14 @@ class ChatRepository {
     final missing = roomIds.where((id) => !result.containsKey(id)).toList();
     if (missing.isEmpty) return result;
 
-    final backfilled = await Future.wait(missing.map((id) async {
-      final r = await _messagesForRooms([id], since: since)
-          .order('sent_at', ascending: false)
-          .limit(1);
-      return r.isEmpty ? null : r.first;
-    }));
+    final backfilled = await Future.wait(
+      missing.map((id) async {
+        final r = await _messagesForRooms([
+          id,
+        ], since: since).order('sent_at', ascending: false).limit(1);
+        return r.isEmpty ? null : r.first;
+      }),
+    );
     for (final m in backfilled) {
       if (m != null) result[m['chat_room_id'] as String] = m;
     }
@@ -271,7 +279,9 @@ class ChatRepository {
   }
 
   PostgrestFilterBuilder<PostgrestList> _messagesForRooms(
-      List<String> roomIds, {DateTime? since}) {
+    List<String> roomIds, {
+    DateTime? since,
+  }) {
     var query = supabase
         .from(SupabaseConstants.messages)
         .select('chat_room_id, content, sent_at, sender_id')
@@ -337,8 +347,12 @@ class ChatRepository {
     ];
     final lastByRoom = await _lastMessageByRoom(roomIds, since: approvedAt);
 
-    InboxRoom toRoom(String id, String title, bool isBroadcast,
-        {String? phone}) {
+    InboxRoom toRoom(
+      String id,
+      String title,
+      bool isBroadcast, {
+      String? phone,
+    }) {
       final last = lastByRoom[id];
       return InboxRoom(
         id: id,
@@ -362,8 +376,12 @@ class ChatRepository {
           ? toRoom(broadcastData['id'] as String, busNumber, true)
           : null,
       direct: dmData != null
-          ? toRoom(dmData['id'] as String, conductorName ?? '', false,
-              phone: conductorPhone)
+          ? toRoom(
+              dmData['id'] as String,
+              conductorName ?? '',
+              false,
+              phone: conductorPhone,
+            )
           : null,
     );
   }
@@ -447,8 +465,14 @@ class ChatRepository {
       return res;
     }
 
-    InboxRoom buildBase(String id, String title, bool isBroadcast,
-        {String? phone, String? userType, required int unread}) {
+    InboxRoom buildBase(
+      String id,
+      String title,
+      bool isBroadcast, {
+      String? phone,
+      String? userType,
+      required int unread,
+    }) {
       final last = lastByRoom[id];
       return InboxRoom(
         id: id,
@@ -468,25 +492,29 @@ class ChatRepository {
     InboxRoom? broadcast;
     if (broadcastData != null) {
       final id = broadcastData['id'] as String;
-      broadcast =
-          buildBase(id, busNumber, true, unread: await unreadCount(id));
+      broadcast = buildBase(id, busNumber, true, unread: await unreadCount(id));
     }
 
-    final directs = await Future.wait(dmData.map((r) async {
-      final p = r['passengers'] as Map?;
-      final id = r['id'] as String;
-      return buildBase(
-        id,
-        p?['name'] as String? ?? '',
-        false,
-        phone: p?['phone'] as String?,
-        userType: p?['user_type'] as String?,
-        unread: await unreadCount(id),
-      );
-    }));
+    final directs = await Future.wait(
+      dmData.map((r) async {
+        final p = r['passengers'] as Map?;
+        final id = r['id'] as String;
+        return buildBase(
+          id,
+          p?['name'] as String? ?? '',
+          false,
+          phone: p?['phone'] as String?,
+          userType: p?['user_type'] as String?,
+          unread: await unreadCount(id),
+        );
+      }),
+    );
 
-    directs.sort((a, b) => (b.lastMessageAt ?? DateTime(0))
-        .compareTo(a.lastMessageAt ?? DateTime(0)));
+    directs.sort(
+      (a, b) => (b.lastMessageAt ?? DateTime(0)).compareTo(
+        a.lastMessageAt ?? DateTime(0),
+      ),
+    );
 
     return ConductorInbox(busId: busId, broadcast: broadcast, directs: directs);
   }

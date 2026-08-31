@@ -51,7 +51,9 @@ Stream<AuthUser?> authState(Ref ref) {
     try {
       final userRepo = ref.read(userRepositoryProvider);
       final status = await userRepo.passengerApprovalStatus(user.id);
-      final busId = status != null ? await userRepo.passengerBusId(user.id) : null;
+      final busId = status != null
+          ? await userRepo.passengerBusId(user.id)
+          : null;
 
       debugPrint('[AUTH] approval_status=$status bus_id=$busId');
 
@@ -59,11 +61,14 @@ Stream<AuthUser?> authState(Ref ref) {
         id: user.id,
         email: email,
         role: UserRole.passenger,
-        approvalStatus:
-            status != null ? ApprovalStatusX.fromString(status) : null,
+        approvalStatus: status != null
+            ? ApprovalStatusX.fromString(status)
+            : null,
         busId: busId,
       );
-      debugPrint('[AUTH] returning user, approvalStatus=${authUser.approvalStatus} busId=${authUser.busId}');
+      debugPrint(
+        '[AUTH] returning user, approvalStatus=${authUser.approvalStatus} busId=${authUser.busId}',
+      );
       // Start listening for chat messages once the user is fully resolved
       if (authUser.approvalStatus?.name == 'approved') {
         MessageNotificationService.start();

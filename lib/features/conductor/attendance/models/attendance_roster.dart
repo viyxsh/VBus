@@ -15,11 +15,11 @@ enum AttendanceState { waiting, present, missing, absent }
 extension AttendanceStateX on AttendanceState {
   /// Parses a DB state string; unknown values fall back to [AttendanceState.waiting].
   static AttendanceState fromName(String name) => switch (name) {
-        'present' => AttendanceState.present,
-        'missing' => AttendanceState.missing,
-        'absent' => AttendanceState.absent,
-        _ => AttendanceState.waiting,
-      };
+    'present' => AttendanceState.present,
+    'missing' => AttendanceState.missing,
+    'absent' => AttendanceState.absent,
+    _ => AttendanceState.waiting,
+  };
 }
 
 /// One passenger's attendance record for a trip, joined with their boarding
@@ -76,7 +76,9 @@ class AttendanceMachine {
   /// Present / missing / absent records are left untouched.
   /// Returns how many records changed.
   static int markStopWaitingMissing(
-      List<AttendanceEntry> entries, String stopId) {
+    List<AttendanceEntry> entries,
+    String stopId,
+  ) {
     var changed = 0;
     for (final e in entries) {
       if (e.stopId == stopId && e.state == AttendanceState.waiting) {
@@ -102,28 +104,24 @@ class AttendanceMachine {
 
   /// Per-state counts, including the grand total.
   static Map<String, int> stats(List<AttendanceEntry> entries) => {
-        'total': entries.length,
-        'present':
-            entries.where((e) => e.state == AttendanceState.present).length,
-        'missing':
-            entries.where((e) => e.state == AttendanceState.missing).length,
-        'absent':
-            entries.where((e) => e.state == AttendanceState.absent).length,
-        'waiting':
-            entries.where((e) => e.state == AttendanceState.waiting).length,
-      };
+    'total': entries.length,
+    'present': entries.where((e) => e.state == AttendanceState.present).length,
+    'missing': entries.where((e) => e.state == AttendanceState.missing).length,
+    'absent': entries.where((e) => e.state == AttendanceState.absent).length,
+    'waiting': entries.where((e) => e.state == AttendanceState.waiting).length,
+  };
 
   /// List ordering used by the attendance screen: the current stop's
   /// passengers first, then every other stop in route order.
   static void sortByCurrentStop(
-      List<AttendanceEntry> entries, int currentStopOrder) {
+    List<AttendanceEntry> entries,
+    int currentStopOrder,
+  ) {
     entries.sort((a, b) {
-      if (a.stopOrder == currentStopOrder &&
-          b.stopOrder != currentStopOrder) {
+      if (a.stopOrder == currentStopOrder && b.stopOrder != currentStopOrder) {
         return -1;
       }
-      if (a.stopOrder != currentStopOrder &&
-          b.stopOrder == currentStopOrder) {
+      if (a.stopOrder != currentStopOrder && b.stopOrder == currentStopOrder) {
         return 1;
       }
       return a.stopOrder.compareTo(b.stopOrder);

@@ -43,8 +43,9 @@ class OsmMapView extends StatelessWidget {
         onMapReady: onMapReady,
         onTap: onTap == null ? null : (_, p) => onTap!(p),
         onLongPress: onLongPress == null ? null : (_, p) => onLongPress!(p),
-        interactionOptions:
-            const fm.InteractionOptions(flags: fm.InteractiveFlag.all),
+        interactionOptions: const fm.InteractionOptions(
+          flags: fm.InteractiveFlag.all,
+        ),
       ),
       children: [
         fm.TileLayer(
@@ -132,8 +133,11 @@ abstract final class OsmMapHelpers {
     );
   }
 
-  static void centerOn(fm.MapController controller, gmaps.LatLng target,
-      {double zoom = 15}) {
+  static void centerOn(
+    fm.MapController controller,
+    gmaps.LatLng target, {
+    double zoom = 15,
+  }) {
     controller.move(toOsm(target), zoom);
   }
 
@@ -166,9 +170,10 @@ abstract final class OsmMapHelpers {
               ),
               boxShadow: const [
                 BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 3,
-                    offset: Offset(0, 1)),
+                  color: Colors.black26,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
           ),
@@ -199,7 +204,10 @@ abstract final class OsmMapHelpers {
             border: Border.all(color: Colors.white, width: 2.5),
             boxShadow: const [
               BoxShadow(
-                  color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                color: Colors.black38,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
             ],
           ),
           child: Center(
@@ -207,8 +215,10 @@ abstract final class OsmMapHelpers {
               padding: EdgeInsets.all(size * 0.22),
               child: SvgPicture.asset(
                 'assets/icons/bus.svg',
-                colorFilter:
-                    const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),
@@ -242,13 +252,17 @@ abstract final class OsmMapHelpers {
               border: Border.all(color: Colors.white, width: 2.5),
               boxShadow: const [
                 BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 3,
-                    offset: Offset(0, 1)),
+                  color: Colors.black26,
+                  blurRadius: 3,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
-            child: const Icon(Icons.location_on_rounded,
-                size: 16, color: Colors.white),
+            child: const Icon(
+              Icons.location_on_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
           ),
         ),
       ),

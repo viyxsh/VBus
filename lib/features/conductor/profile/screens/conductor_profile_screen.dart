@@ -55,12 +55,14 @@ class _ConductorProfileScreenState
         content: Text(S.t(context, 'Are you sure you want to log out?')),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(S.t(context, 'Cancel'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(S.t(context, 'Cancel')),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(S.t(context, 'Log out')),
           ),
         ],
@@ -79,7 +81,8 @@ class _ConductorProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => ConductorEditProfileSheet(profile: profile),
     );
   }
@@ -90,7 +93,8 @@ class _ConductorProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => const ConductorBusControlsSheet(),
     );
   }
@@ -101,7 +105,8 @@ class _ConductorProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => ConductorManagePassengersSheet(busId: busId),
     );
   }
@@ -113,7 +118,8 @@ class _ConductorProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => ConductorBusRequestsSheet(profile: profile, busId: busId),
     );
   }
@@ -125,7 +131,8 @@ class _ConductorProfileScreenState
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) =>
           ConductorSeatReservationsSheet(profile: profile, busId: busId),
     );
@@ -147,8 +154,10 @@ class _ConductorProfileScreenState
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
-        title: Text(S.t(context, 'Settings'),
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          S.t(context, 'Settings'),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         centerTitle: true,
         scrolledUnderElevation: 0,
         elevation: 0,
@@ -156,17 +165,21 @@ class _ConductorProfileScreenState
       body: profileAsync.when(
         loading: () => const Center(child: LottieLoading()),
         error: (e, _) => Center(
-            child: FilledButton(
-                onPressed: () => ref.invalidate(conductorProfileProvider),
-                child: Text(S.t(context, 'Retry')))),
+          child: FilledButton(
+            onPressed: () => ref.invalidate(conductorProfileProvider),
+            child: Text(S.t(context, 'Retry')),
+          ),
+        ),
         data: (profile) {
           final bus = profile['buses'] as Map;
-          final name = profile['display_name'] as String? ??
+          final name =
+              profile['display_name'] as String? ??
               profile['username'] as String? ??
               '';
           final busNum = bus['bus_number'] as String? ?? '?';
-          final initial =
-              name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'C';
+          final initial = name.trim().isNotEmpty
+              ? name.trim()[0].toUpperCase()
+              : 'C';
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -180,11 +193,14 @@ class _ConductorProfileScreenState
                       CircleAvatar(
                         radius: 30,
                         backgroundColor: theme.colorScheme.primaryContainer,
-                        child: Text(initial,
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.primary)),
+                        child: Text(
+                          initial,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -192,37 +208,44 @@ class _ConductorProfileScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                                name.isEmpty
-                                    ? S.t(context, 'Conductor')
-                                    : name,
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700)),
+                              name.isEmpty ? S.t(context, 'Conductor') : name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
-                                '${S.t(context, 'Conductor')} · ${S.t(context, 'Bus')} $busNum',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: theme
-                                        .colorScheme.onSurfaceVariant)),
+                              '${S.t(context, 'Conductor')} · ${S.t(context, 'Bus')} $busNum',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                             const SizedBox(height: 6),
                             GestureDetector(
                               onTap: () => _showEditProfile(profile),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  SvgPicture.asset('assets/icons/pencil.svg',
-                                      width: 13,
-                                      height: 13,
-                                      colorFilter: ColorFilter.mode(
-                                          theme.colorScheme.primary,
-                                          BlendMode.srcIn)),
+                                  SvgPicture.asset(
+                                    'assets/icons/pencil.svg',
+                                    width: 13,
+                                    height: 13,
+                                    colorFilter: ColorFilter.mode(
+                                      theme.colorScheme.primary,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(S.t(context, 'Edit Profile'),
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.w600)),
+                                  Text(
+                                    S.t(context, 'Edit Profile'),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -237,89 +260,113 @@ class _ConductorProfileScreenState
               // ── Bus Management ────────────────────────────────────────────────
               profileSectionLabel(S.t(context, 'Bus Management'), theme),
               profileCard([
-                profileRow('assets/icons/bus.svg',
-                    S.t(context, 'Bus Controls'),
-                    subtitle: S.t(context, 'Faculty rows, seat layout'),
-                    onTap: _showBusControls,
-                    theme: theme),
+                profileRow(
+                  'assets/icons/bus.svg',
+                  S.t(context, 'Bus Controls'),
+                  subtitle: S.t(context, 'Faculty rows, seat layout'),
+                  onTap: _showBusControls,
+                  theme: theme,
+                ),
                 profileDivider(theme),
-                profileRow('assets/icons/passengers.svg',
-                    S.t(context, 'Manage Passengers'),
-                    subtitle: S.t(context, 'Remove passengers from bus'),
-                    onTap: () =>
-                        _showManagePassengers(profile['bus_id'] as String),
-                    theme: theme),
+                profileRow(
+                  'assets/icons/passengers.svg',
+                  S.t(context, 'Manage Passengers'),
+                  subtitle: S.t(context, 'Remove passengers from bus'),
+                  onTap: () =>
+                      _showManagePassengers(profile['bus_id'] as String),
+                  theme: theme,
+                ),
                 profileDivider(theme),
-                Consumer(builder: (context, ref, _) {
-                  final busId = profile['bus_id'] as String;
-                  final requestsAsync = ref.watch(busRequestsProvider(busId));
-                  final count = requestsAsync.valueOrNull?.length ?? 0;
-                  return profileRow('assets/icons/passengers.svg',
+                Consumer(
+                  builder: (context, ref, _) {
+                    final busId = profile['bus_id'] as String;
+                    final requestsAsync = ref.watch(busRequestsProvider(busId));
+                    final count = requestsAsync.valueOrNull?.length ?? 0;
+                    return profileRow(
+                      'assets/icons/passengers.svg',
                       S.t(context, 'View Requests'),
-                      subtitle:
-                          S.t(context, 'Pending bus join requests'),
+                      subtitle: S.t(context, 'Pending bus join requests'),
                       badge: count > 0 ? count.toString() : null,
                       onTap: () => _showBusRequests(profile),
-                      theme: theme);
-                }),
+                      theme: theme,
+                    );
+                  },
+                ),
                 profileDivider(theme),
-                Consumer(builder: (context, ref, _) {
-                  final busId = profile['bus_id'] as String;
-                  final res =
-                      ref.watch(pendingSeatReservationsProvider(busId));
-                  final count = res.valueOrNull?.length ?? 0;
-                  return profileRow('assets/icons/passengers.svg',
+                Consumer(
+                  builder: (context, ref, _) {
+                    final busId = profile['bus_id'] as String;
+                    final res = ref.watch(
+                      pendingSeatReservationsProvider(busId),
+                    );
+                    final count = res.valueOrNull?.length ?? 0;
+                    return profileRow(
+                      'assets/icons/passengers.svg',
                       S.t(context, 'Seat Reservations'),
-                      subtitle:
-                          S.t(context, 'Permanent seat requests from faculty'),
+                      subtitle: S.t(
+                        context,
+                        'Permanent seat requests from faculty',
+                      ),
                       badge: count > 0 ? count.toString() : null,
                       onTap: () => _showSeatReservations(profile),
-                      theme: theme);
-                }),
+                      theme: theme,
+                    );
+                  },
+                ),
               ], theme),
 
               // ── General ───────────────────────────────────────────────────────
               profileSectionLabel(S.t(context, 'General'), theme),
               profileCard([
-                profileValueRow('assets/icons/brightness.svg',
-                    S.t(context, 'Appearance'),
-                    value: isDarkMode
-                        ? S.t(context, 'Dark')
-                        : S.t(context, 'Light'),
-                    onTap: () => ref.read(themeProvider.notifier).setMode(
-                          isDarkMode ? ThemeMode.light : ThemeMode.dark,
-                        ),
-                    theme: theme,
-                  ),
+                profileValueRow(
+                  'assets/icons/brightness.svg',
+                  S.t(context, 'Appearance'),
+                  value: isDarkMode
+                      ? S.t(context, 'Dark')
+                      : S.t(context, 'Light'),
+                  onTap: () => ref
+                      .read(themeProvider.notifier)
+                      .setMode(isDarkMode ? ThemeMode.light : ThemeMode.dark),
+                  theme: theme,
+                ),
                 profileDivider(theme),
-                profileValueRow('assets/icons/languages.svg',
-                    S.t(context, 'Language'),
-                    value: isHindi
-                        ? S.t(context, 'Hindi')
-                        : S.t(context, 'English'),
-                    onTap: () => ref.read(localeProvider.notifier).setLocale(
-                          isHindi ? const Locale('en') : const Locale('hi'),
-                        ),
-                    theme: theme,
-                  ),
+                profileValueRow(
+                  'assets/icons/languages.svg',
+                  S.t(context, 'Language'),
+                  value: isHindi
+                      ? S.t(context, 'Hindi')
+                      : S.t(context, 'English'),
+                  onTap: () => ref
+                      .read(localeProvider.notifier)
+                      .setLocale(
+                        isHindi ? const Locale('en') : const Locale('hi'),
+                      ),
+                  theme: theme,
+                ),
                 profileDivider(theme),
-                profileToggleRow('assets/icons/notification.svg',
-                    S.t(context, 'Notifications'),
-                    hint: S.t(
-                        context, 'Trip start reminders and attendance alerts'),
-                    value: _notifEnabled,
-                    onChanged: _toggleNotif,
-                    theme: theme),
+                profileToggleRow(
+                  'assets/icons/notification.svg',
+                  S.t(context, 'Notifications'),
+                  hint: S.t(
+                    context,
+                    'Trip start reminders and attendance alerts',
+                  ),
+                  value: _notifEnabled,
+                  onChanged: _toggleNotif,
+                  theme: theme,
+                ),
               ], theme),
 
               // ── Support ───────────────────────────────────────────────────────
               profileSectionLabel(S.t(context, 'Support'), theme),
               profileCard([
-                profileRow('assets/icons/sign-out-alt.svg',
-                    S.t(context, 'Log Out'),
-                    color: theme.colorScheme.error,
-                    onTap: _signOut,
-                    theme: theme),
+                profileRow(
+                  'assets/icons/sign-out-alt.svg',
+                  S.t(context, 'Log Out'),
+                  color: theme.colorScheme.error,
+                  onTap: _signOut,
+                  theme: theme,
+                ),
               ], theme),
             ],
           );

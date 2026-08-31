@@ -18,10 +18,14 @@ class TranslationService {
       '${a.name}_${b.name}';
 
   static OnDeviceTranslator _translator(
-      TranslateLanguage source, TranslateLanguage target) {
+    TranslateLanguage source,
+    TranslateLanguage target,
+  ) {
     final key = _modelKey(source, target);
     return _translators.putIfAbsent(
-        key, () => OnDeviceTranslator(sourceLanguage: source, targetLanguage: target));
+      key,
+      () => OnDeviceTranslator(sourceLanguage: source, targetLanguage: target),
+    );
   }
 
   /// Translates [text] between Hindi and English.

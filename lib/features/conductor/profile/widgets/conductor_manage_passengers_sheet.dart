@@ -28,12 +28,14 @@ class _ConductorManagePassengersSheetState
         content: Text('Remove $name from this bus?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(S.t(context, 'Cancel'))),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(S.t(context, 'Cancel')),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: const Text('Remove'),
           ),
         ],
@@ -48,10 +50,12 @@ class _ConductorManagePassengersSheetState
     } catch (e) {
       debugPrint('[MANAGE_PASS] remove error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Failed to remove passenger'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to remove passenger'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     }
   }
@@ -77,7 +81,9 @@ class _ConductorManagePassengersSheetState
                 TextField(
                   onChanged: (v) => setState(() => _search = v),
                   decoration: sheetInputDecoration(
-                      S.t(context, 'Search by name or ID'), Icons.search),
+                    S.t(context, 'Search by name or ID'),
+                    Icons.search,
+                  ),
                 ),
               ],
             ),
@@ -87,27 +93,36 @@ class _ConductorManagePassengersSheetState
             child: passengersAsync.when(
               loading: () => const Center(child: LottieLoading()),
               error: (e, _) => Center(
-                  child: Text('Failed to load',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant))),
+                child: Text(
+                  'Failed to load',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
               data: (passengers) {
                 final filtered = _search.isEmpty
                     ? passengers
                     : passengers
-                        .where((p) =>
-                            (p['name'] as String)
-                                .toLowerCase()
-                                .contains(_search.toLowerCase()) ||
-                            (p['institute_id'] as String)
-                                .toLowerCase()
-                                .contains(_search.toLowerCase()))
-                        .toList();
+                          .where(
+                            (p) =>
+                                (p['name'] as String).toLowerCase().contains(
+                                  _search.toLowerCase(),
+                                ) ||
+                                (p['institute_id'] as String)
+                                    .toLowerCase()
+                                    .contains(_search.toLowerCase()),
+                          )
+                          .toList();
                 if (filtered.isEmpty) {
                   return Center(
-                      child: Text(S.t(context, 'No passengers'),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurfaceVariant)));
+                    child: Text(
+                      S.t(context, 'No passengers'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  );
                 }
                 return ListView.separated(
                   controller: controller,
@@ -122,33 +137,38 @@ class _ConductorManagePassengersSheetState
                     final status = p['approval_status'] as String;
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor:
-                            theme.colorScheme.primaryContainer,
+                        backgroundColor: theme.colorScheme.primaryContainer,
                         child: Text(
                           name[0].toUpperCase(),
                           style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w700),
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      title: Text(name,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600)),
+                      title: Text(
+                        name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       subtitle: Text(
                         '$regNum · ${type == 'faculty' ? S.t(context, 'Faculty') : S.t(context, 'Student')}',
                         style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (status != 'approved')
-                            _statusBadge(status, theme),
+                          if (status != 'approved') _statusBadge(status, theme),
                           const SizedBox(width: 4),
                           IconButton(
-                            icon: Icon(Icons.person_remove_outlined,
-                                color: theme.colorScheme.error,
-                                size: 20),
+                            icon: Icon(
+                              Icons.person_remove_outlined,
+                              color: theme.colorScheme.error,
+                              size: 20,
+                            ),
                             onPressed: () =>
                                 _removePassenger(p['id'] as String, name),
                           ),
@@ -176,11 +196,14 @@ class _ConductorManagePassengersSheetState
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
-      child: Text(status.toUpperCase(),
-          style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: color)),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }

@@ -11,7 +11,7 @@ import '../../data/repositories/user_repository.dart';
 class MessageNotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  static const _channelId   = 'new_messages';
+  static const _channelId = 'new_messages';
   static const _channelName = 'New Messages';
 
   // Rooms the user is a member of
@@ -50,10 +50,10 @@ class MessageNotificationService {
           table: 'messages',
           callback: (payload) async {
             final record = payload.newRecord;
-            final roomId   = record['chat_room_id'] as String?;
-            final senderId = record['sender_id']    as String?;
-            final content  = record['content']      as String?;
-            final name     = record['sender_name']  as String? ?? 'New message';
+            final roomId = record['chat_room_id'] as String?;
+            final senderId = record['sender_id'] as String?;
+            final content = record['content'] as String?;
+            final name = record['sender_name'] as String? ?? 'New message';
 
             // Skip if not in our rooms, sent by self, or room is currently open
             if (roomId == null) return;
@@ -84,7 +84,8 @@ class MessageNotificationService {
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      _channelId, _channelName,
+      _channelId,
+      _channelName,
       channelDescription: 'Chat message alerts',
       importance: Importance.high,
       priority: Priority.high,

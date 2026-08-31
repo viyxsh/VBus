@@ -90,8 +90,9 @@ class _PassengerRegistrationScreenState
       _selectedStop = null;
     });
     try {
-      final data =
-          await ref.read(registrationRepositoryProvider).busesForCity(cityId);
+      final data = await ref
+          .read(registrationRepositoryProvider)
+          .busesForCity(cityId);
       if (mounted) {
         setState(() {
           _buses = data;
@@ -110,8 +111,9 @@ class _PassengerRegistrationScreenState
       _selectedStop = null;
     });
     try {
-      final data =
-          await ref.read(registrationRepositoryProvider).stopsForRoute(routeId);
+      final data = await ref
+          .read(registrationRepositoryProvider)
+          .stopsForRoute(routeId);
       if (mounted) {
         setState(() {
           _stops = data;
@@ -224,10 +226,7 @@ class _PassengerRegistrationScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _UserInfoBanner(
-                            email: _email,
-                            userType: _userType,
-                          ),
+                          _UserInfoBanner(email: _email, userType: _userType),
                           const SizedBox(height: 28),
                           _sectionHeader(theme, 'Personal Details'),
                           const SizedBox(height: 16),
@@ -328,13 +327,15 @@ class _PassengerRegistrationScreenState
   Widget _buildCityDropdown(ThemeData theme) {
     return DropdownButtonFormField<Map<String, dynamic>>(
       initialValue: _selectedCity,
-      decoration: _inputDecoration(label: 'City', icon: Icons.location_city_outlined),
+      decoration: _inputDecoration(
+        label: 'City',
+        icon: Icons.location_city_outlined,
+      ),
       hint: const Text('Select city'),
       items: _cities
-          .map((c) => DropdownMenuItem(
-                value: c,
-                child: Text(c['name'] as String),
-              ))
+          .map(
+            (c) => DropdownMenuItem(value: c, child: Text(c['name'] as String)),
+          )
           .toList(),
       onChanged: (city) {
         setState(() => _selectedCity = city);
@@ -355,14 +356,16 @@ class _PassengerRegistrationScreenState
         _selectedCity == null
             ? 'Select city first'
             : _loadingBuses
-                ? 'Loading buses...'
-                : 'Select bus',
+            ? 'Loading buses...'
+            : 'Select bus',
       ),
       items: _buses
-          .map((b) => DropdownMenuItem(
-                value: b,
-                child: Text('Bus ${b['bus_number']}'),
-              ))
+          .map(
+            (b) => DropdownMenuItem(
+              value: b,
+              child: Text('Bus ${b['bus_number']}'),
+            ),
+          )
           .toList(),
       onChanged: _selectedCity == null
           ? null
@@ -385,14 +388,13 @@ class _PassengerRegistrationScreenState
         _selectedBus == null
             ? 'Select bus first'
             : _loadingStops
-                ? 'Loading stops...'
-                : 'Select your stop',
+            ? 'Loading stops...'
+            : 'Select your stop',
       ),
       items: _stops
-          .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(s['name'] as String),
-              ))
+          .map(
+            (s) => DropdownMenuItem(value: s, child: Text(s['name'] as String)),
+          )
           .toList(),
       onChanged: _selectedBus == null
           ? null
@@ -437,8 +439,11 @@ class _PassengerRegistrationScreenState
                             color: Colors.black54,
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Icon(Icons.close,
-                              color: Colors.white, size: 16),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -539,7 +544,9 @@ class _PassengerRegistrationScreenState
                 height: 20,
                 width: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Text(
                 'Submit Registration',
@@ -581,9 +588,7 @@ class _UserInfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.primaryContainer,
-        ),
+        border: Border.all(color: theme.colorScheme.primaryContainer),
       ),
       child: Row(
         children: [
