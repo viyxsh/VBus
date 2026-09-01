@@ -20,6 +20,7 @@ A read-only browser build -- tap Enter Demo (Student) or Enter Demo (Conductor) 
 - [Database Schema](#database-schema)
 - [Getting Started](#getting-started)
 - [Environment Setup](#environment-setup)
+- [Database Migrations](#database-migrations)
 - [Running the App](#running-the-app)
 - [Web Demo (Live Prototype)](#web-demo-live-prototype)
 - [Running Tests](#running-tests)
@@ -237,7 +238,7 @@ Configure Supabase:
 - Enable Email and Google OAuth providers in Authentication settings
 - Set Site URL to `com.vitbhopal.vbusf://login-callback`
 - Add `com.vitbhopal.vbusf://login-callback` to allowed redirect URLs
-- Run `supabase/rpc_functions.sql` in the SQL Editor to create SECURITY DEFINER functions
+- Apply the versioned schema (see Database Migrations below — the RPC functions are part of the committed migrations, not a manual SQL-editor step)
 - Schedule the seat booking cleanup job (requires pg_cron enabled):
 
 ```sql
@@ -250,6 +251,26 @@ select cron.schedule(
   $$
 );
 ```
+
+---
+
+## Database Migrations
+
+The schema is version-controlled under `supabase/migrations/` and applied with the Supabase CLI:
+
+```bash
+supabase login                       # once; token from supabase.com/dashboard/account/tokens
+supabase link --project-ref <ref>    # once per checkout
+supabase db push                     # applies pending migrations to the linked project
+supabase db push --dry-run           # preview first
+```
+
+Rules of the road:
+
+- **Never make schema changes in the dashboard SQL editor** — create a new `supabase/migrations/<timestamp>_<name>.sql` file and push it, so the committed history stays the source of truth.
+- `supabase/seed.sql` holds the reference data (cities, routes, bus stops, buses). `supabase db reset` applies migrations + seed locally (requires Docker).
+- `supabase/rpc_functions.sql` is kept only as historical reference; the live RPC definitions come from the migrations.
+- If someone edits the dashboard anyway, reconcile with `supabase db pull` (requires Docker) so the change becomes a reviewed migration.
 
 ---
 
@@ -302,7 +323,7 @@ On web the role-selection screen offers one-tap Enter Demo (Student) and Enter D
    - `demo_conductor.sql` -- points that bus's conductor at the demo Auth user
    - `demo_seed.sql` -- starts a self-moving trip via `pg_cron` so the map, timeline, and ETA animate on their own
    - `rpc_functions.sql` -- creates SECURITY DEFINER RPC functions for conductor operations
-3. `.env.json` filled with `DEMO_STUDENT_EMAIL` / `DEMO_STUDENT_PASSWORD` and `DEMO_CONDUCTOR_USERNAME` / `DEMO_CONDUCTOR_PASSWORD` matching the Auth users (baked in at build time).
+3. `.env.json` filled with `DEMO_STUDENT_EMAIL` / `DEMO_STUDENT_PASSWORD` and `DEMO_CONDUCTOR_USERNAME` / `DEMO_CONDUCTOR_PASSWORD` matching the Auth users (baked in at build time). **These have no built-in defaults** — if the values are missing, the one-tap demo sign-in buttons simply stay hidden.
 
 ### Building and deploying the web bundle
 
