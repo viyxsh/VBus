@@ -6,7 +6,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import '../../../../core/widgets/lottie_widgets.dart';
-import '../../../../core/widgets/web_map_placeholder.dart';
+import '../../../../core/widgets/osm_map_view.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -29,6 +30,7 @@ class PassengerMapTab extends ConsumerStatefulWidget {
 
 class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   GoogleMapController? _mapController;
+  final fm.MapController _osmController = fm.MapController();
 
   String _busId = '';
   String _busNumber = '';
@@ -78,6 +80,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     _channel?.unsubscribe();
     _tripSub?.cancel();
     _mapController?.dispose();
+    _osmController.dispose();
     super.dispose();
   }
 
@@ -256,7 +259,10 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       _customPins = await ref.read(passengerRepositoryProvider).customPins(_busId);
 
       _busIcon = await busIconFuture;
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+        if (kIsWeb) _fitOsmBounds();
+      }
     } catch (e) {
       debugPrint('[PASSENGER_MAP] error: $e');
       if (mounted) setState(() => _loading = false);
@@ -583,14 +589,74 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
 
   void _centerOnBus() {
     if (_busLocation != null) {
+      if (kIsWeb) {
+        OsmMapHelpers.centerOn(_osmController, _busLocation!);
+        return;
+      }
       _mapController?.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(target: _busLocation!, zoom: 15),
         ),
       );
     } else {
+      if (kIsWeb) {
+        _fitOsmBounds();
+        return;
+      }
       _fitBounds();
     }
+  }
+
+  /// Web (OpenStreetMap) equivalent of [_fitBounds] — safe to call before the
+  /// flutter_map widget is ready; retries on the next frame if needed.
+  void _fitOsmBounds() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        OsmMapHelpers.fitBounds(_osmController, _stops, bus: _busLocation);
+      } catch (_) {
+        // Map not ready yet — retry once on the following frame.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          try {
+            OsmMapHelpers.fitBounds(_osmController, _stops, bus: _busLocation);
+          } catch (_) {}
+        });
+      }
+    });
+  }
+
+  List<fm.Marker> _buildOsmMarkers() {
+    final markers = <fm.Marker>[];
+    for (final s in _stops) {
+      final lat = (s['latitude'] as num).toDouble();
+      final lng = (s['longitude'] as num).toDouble();
+      if (lat == 0 && lng == 0) continue;
+      markers.add(OsmMapHelpers.stopMarker(
+        id: s['id'] as String,
+        lat: lat,
+        lng: lng,
+        name: s['name'] as String,
+        isMyStop: s['id'] == _myStopId,
+      ));
+    }
+    if (_busLocation != null) {
+      markers.add(OsmMapHelpers.busMarker(
+        lat: _busLocation!.latitude,
+        lng: _busLocation!.longitude,
+      ));
+    }
+    for (final pin in _customPins) {
+      final id = pin['id'] as String;
+      markers.add(OsmMapHelpers.pinMarker(
+        id: id,
+        lat: (pin['latitude'] as num).toDouble(),
+        lng: (pin['longitude'] as num).toDouble(),
+        label: pin['label'] as String,
+        onTap: () => _deletePin(id, pin['label'] as String),
+      ));
+    }
+    return markers;
   }
 
   void _fitBounds() {
@@ -719,10 +785,19 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                // Web demo has no Maps JS workflow — show a placeholder; the
-                // stop timeline and ETA below stay fully functional.
+                // Web uses OpenStreetMap via flutter_map (no API key needed);
+                // mobile uses Google Maps.
                 if (kIsWeb)
-                  const Positioned.fill(child: WebMapPlaceholder())
+                  Positioned.fill(
+                    child: OsmMapView(
+                      mapController: _osmController,
+                      routePoints: OsmMapHelpers.toOsmList(_routePoints),
+                      markers: _buildOsmMarkers(),
+                      onMapReady: _fitOsmBounds,
+                      onLongPress: (p) =>
+                          _addPin(LatLng(p.latitude, p.longitude)),
+                    ),
+                  )
                 else
                   GoogleMap(
                     initialCameraPosition: const CameraPosition(
@@ -739,18 +814,17 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
                     padding: const EdgeInsets.only(bottom: 80),
                   ),
                 // GPS button — centres on the bus, not the passenger
-                if (!kIsWeb)
-                  Positioned(
-                    right: 12,
-                    bottom: 175,
-                    child: Material(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(28),
-                      elevation: 3,
-                      child: _mapBtn('assets/icons/gps.svg', _centerOnBus,
-                          Theme.of(context)),
-                    ),
+                Positioned(
+                  right: 12,
+                  bottom: 175,
+                  child: Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    elevation: 3,
+                    child: _mapBtn('assets/icons/gps.svg', _centerOnBus,
+                        Theme.of(context)),
                   ),
+                ),
                 DraggableScrollableSheet(
                   initialChildSize: 0.22,
                   minChildSize: 0.12,

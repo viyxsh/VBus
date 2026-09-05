@@ -6,13 +6,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
+import '../../../../core/widgets/osm_map_view.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../core/services/route_service.dart';
-import '../../../../../core/widgets/web_map_placeholder.dart';
 import '../../../../../data/repositories/tracking_repository.dart';
 
 class ConductorMapTab extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class ConductorMapTab extends ConsumerStatefulWidget {
 
 class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   GoogleMapController? _mapController;
+  final fm.MapController _osmController = fm.MapController();
 
   String _busId = '';
   String _busNumber = '';
@@ -53,6 +55,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     _locationSub?.cancel();
     _tripSub?.cancel();
     _mapController?.dispose();
+    _osmController.dispose();
     super.dispose();
   }
 
@@ -202,7 +205,10 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
       await _startTracking();
 
       _busIcon = await busIconFuture;
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+        if (kIsWeb) _fitOsmBounds();
+      }
     } catch (e) {
       debugPrint('[CONDUCTOR_MAP] error: $e');
       if (mounted) setState(() => _loading = false);
@@ -231,6 +237,10 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     if (lat == 0 && lng == 0) return;
     final pos = LatLng(lat, lng);
     if (mounted) setState(() => _busMarkerPosition = pos);
+    if (kIsWeb) {
+      OsmMapHelpers.centerOn(_osmController, pos);
+      return;
+    }
     _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(CameraPosition(target: pos, zoom: 15)),
     );
@@ -287,6 +297,10 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     if (_hasActiveTrip) {
       final target = _myLocation ?? _busMarkerPosition;
       if (target != null) {
+        if (kIsWeb) {
+          OsmMapHelpers.centerOn(_osmController, target);
+          return;
+        }
         _mapController?.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(target: target, zoom: 15),
@@ -294,6 +308,10 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
         );
         return;
       }
+    }
+    if (kIsWeb) {
+      _fitOsmBounds();
+      return;
     }
     _fitBounds();
   }
@@ -303,6 +321,49 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     _fitBounds();
+  }
+
+  void _fitOsmBounds() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        OsmMapHelpers.fitBounds(_osmController, _stops,
+            bus: _myLocation ?? _busMarkerPosition);
+      } catch (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          try {
+            OsmMapHelpers.fitBounds(_osmController, _stops,
+                bus: _myLocation ?? _busMarkerPosition);
+          } catch (_) {}
+        });
+      }
+    });
+  }
+
+  List<fm.Marker> _buildOsmMarkers() {
+    final markers = <fm.Marker>[];
+    for (final s in _stops) {
+      final lat = (s['latitude'] as num).toDouble();
+      final lng = (s['longitude'] as num).toDouble();
+      if (lat == 0 && lng == 0) continue;
+      markers.add(OsmMapHelpers.stopMarker(
+        id: s['id'] as String,
+        lat: lat,
+        lng: lng,
+        name: s['name'] as String,
+      ));
+    }
+    final busPos = _myLocation ?? _busMarkerPosition;
+    if (busPos != null) {
+      markers.add(OsmMapHelpers.busMarker(
+        lat: busPos.latitude,
+        lng: busPos.longitude,
+        // Faded when it's only a stop-based estimate without live GPS.
+        opacity: _myLocation != null ? 1.0 : 0.55,
+      ));
+    }
+    return markers;
   }
 
   void _fitBounds() {
@@ -385,9 +446,17 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                // Web demo has no Maps JS workflow — show a placeholder.
+                // Web uses OpenStreetMap via flutter_map (no API key needed);
+                // mobile uses Google Maps.
                 if (kIsWeb)
-                  const Positioned.fill(child: WebMapPlaceholder())
+                  Positioned.fill(
+                    child: OsmMapView(
+                      mapController: _osmController,
+                      routePoints: OsmMapHelpers.toOsmList(_routePoints),
+                      markers: _buildOsmMarkers(),
+                      onMapReady: _fitOsmBounds,
+                    ),
+                  )
                 else
                   GoogleMap(
                     initialCameraPosition: const CameraPosition(
@@ -402,15 +471,14 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
                     padding: const EdgeInsets.only(bottom: 80),
                   ),
                 // GPS recenter button above the route list
-                if (!kIsWeb)
-                  Positioned(
-                    right: 12,
-                    bottom: 175,
-                    child: _MapControls(
-                      hasActiveTrip: _hasActiveTrip,
-                      onRecenter: _recenter,
-                    ),
+                Positioned(
+                  right: 12,
+                  bottom: 175,
+                  child: _MapControls(
+                    hasActiveTrip: _hasActiveTrip,
+                    onRecenter: _recenter,
                   ),
+                ),
                 DraggableScrollableSheet(
                   initialChildSize: 0.22,
                   minChildSize: 0.12,

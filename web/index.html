@@ -32,14 +32,8 @@
   <title>VBUS — Live Bus Tracking</title>
   <link rel="manifest" href="manifest.json">
 
-  <!--
-    Google Maps JavaScript API — required by google_maps_flutter on the web.
-    Create a key in Google Cloud with "Maps JavaScript API" enabled, then
-    restrict it by HTTP referrer to your hosting domain(s) and replace the
-    placeholder below. This key is necessarily visible in page source; the
-    referrer restriction is what secures it (do NOT reuse the Android key).
-  -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_MAPS_JS_API_KEY"></script>
+  <!-- Web maps use OpenStreetMap via flutter_map (no API key required).
+    Mobile builds use the Google Maps SDK with their own platform keys. -->
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

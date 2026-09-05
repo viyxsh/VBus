@@ -1,11 +1,14 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/services/route_service.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
+import '../../../../core/widgets/osm_map_view.dart';
 import '../../../../data/repositories/passenger_repository.dart';
 
 /// Full-screen map where the passenger taps to choose where a custom pin should
@@ -21,6 +24,7 @@ class PinLocationPicker extends ConsumerStatefulWidget {
 
 class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
   GoogleMapController? _mapController;
+  final fm.MapController _osmController = fm.MapController();
   List<Map<String, dynamic>> _stops = [];
   List<LatLng> _routePoints = [];
   LatLng? _picked;
@@ -35,6 +39,7 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
   @override
   void dispose() {
     _mapController?.dispose();
+    _osmController.dispose();
     super.dispose();
   }
 
@@ -47,7 +52,10 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
     } catch (e) {
       debugPrint('[PIN_PICKER] load error: $e');
     }
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+      if (kIsWeb) _fitOsmBounds();
+    }
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -72,6 +80,44 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
           southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng)),
       80,
     ));
+  }
+
+  void _fitOsmBounds() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        OsmMapHelpers.fitBounds(_osmController, _stops, bus: _picked);
+      } catch (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          try {
+            OsmMapHelpers.fitBounds(_osmController, _stops, bus: _picked);
+          } catch (_) {}
+        });
+      }
+    });
+  }
+
+  List<fm.Marker> _buildOsmMarkers() {
+    final markers = <fm.Marker>[];
+    for (final s in _stops) {
+      final lat = (s['latitude'] as num).toDouble();
+      final lng = (s['longitude'] as num).toDouble();
+      if (lat == 0 && lng == 0) continue;
+      markers.add(OsmMapHelpers.stopMarker(
+        id: s['id'] as String,
+        lat: lat,
+        lng: lng,
+        name: s['name'] as String,
+      ));
+    }
+    if (_picked != null) {
+      markers.add(OsmMapHelpers.pickedMarker(
+        _picked!.latitude,
+        _picked!.longitude,
+      ));
+    }
+    return markers;
   }
 
   Set<Marker> _buildMarkers() {
@@ -121,18 +167,28 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(23.15, 77.15),
-                    zoom: 10,
+                if (kIsWeb)
+                  OsmMapView(
+                    mapController: _osmController,
+                    routePoints: OsmMapHelpers.toOsmList(_routePoints),
+                    markers: _buildOsmMarkers(),
+                    onMapReady: _fitOsmBounds,
+                    onTap: (p) =>
+                        setState(() => _picked = LatLng(p.latitude, p.longitude)),
+                  )
+                else
+                  GoogleMap(
+                    initialCameraPosition: const CameraPosition(
+                      target: LatLng(23.15, 77.15),
+                      zoom: 10,
+                    ),
+                    onMapCreated: _onMapCreated,
+                    onTap: (pos) => setState(() => _picked = pos),
+                    markers: _buildMarkers(),
+                    polylines: _buildPolylines(),
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
                   ),
-                  onMapCreated: _onMapCreated,
-                  onTap: (pos) => setState(() => _picked = pos),
-                  markers: _buildMarkers(),
-                  polylines: _buildPolylines(),
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                ),
                 Positioned(
                   top: 12, left: 12, right: 12,
                   child: Material(
