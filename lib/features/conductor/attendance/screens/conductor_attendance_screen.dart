@@ -16,6 +16,12 @@ import '../../../../core/utils/registration_utils.dart';
 import '../../../../data/repositories/attendance_repository.dart';
 import '../../../../data/repositories/tracking_repository.dart';
 import '../models/attendance_roster.dart';
+import '../widgets/attendance_card.dart';
+import '../widgets/attendance_stats_chips.dart';
+import '../widgets/location_status_card.dart';
+import '../widgets/no_trip_view.dart';
+import '../widgets/trip_ended_view.dart';
+import '../widgets/warning_banner.dart';
 
 class ConductorAttendanceScreen extends ConsumerStatefulWidget {
   const ConductorAttendanceScreen({super.key});
@@ -664,9 +670,15 @@ class _ConductorAttendanceScreenState
       body: _loading
           ? const Center(child: LottieLoading())
           : _trip == null
-          ? _buildNoTrip(theme)
+          ? NoTripView(processing: _processing, onStart: _startTrip)
           : _trip!['state'] == 'ended'
-          ? _buildTripEnded(theme)
+          ? TripEndedView(
+              stats: _stats(),
+              onNewTrip: () => setState(() {
+                _trip = null;
+                _attendances = [];
+              }),
+            )
           : _buildAttendanceView(theme),
       // OCR (ML Kit) is mobile-only — hide the scan action on web.
       floatingActionButton: (isOngoing && !kIsWeb)
@@ -700,262 +712,9 @@ class _ConductorAttendanceScreenState
 
   // ─── Sub-views ───────────────────────────────────────────────────────────────
 
-  Widget _buildNoTrip(ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [const Color(0xFF1A2580), const Color(0xFF0D1560)]
-                      : [const Color(0xFF3D5AFE), const Color(0xFF3D3D8F)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF3D5AFE).withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/icons/bus.svg',
-                  width: 36,
-                  height: 36,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              S.t(context, 'No Active Trip'),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              S.t(context, 'Start a trip to begin taking attendance'),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: _processing ? null : _startTrip,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
-                ),
-              ),
-              icon: _processing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.play_arrow_rounded),
-              label: Text(
-                S.t(context, 'Start Trip'),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildTripEnded(ThemeData theme) {
-    final s = _stats();
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.green.shade200, width: 2),
-              ),
-              child: Icon(
-                Icons.check_rounded,
-                size: 52,
-                color: Colors.green.shade600,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              S.t(context, 'Trip Complete'),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Summary chips
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _summaryPill(
-                  '${s['present']}',
-                  S.t(context, 'Present'),
-                  Colors.green.shade700,
-                  Colors.green.shade50,
-                ),
-                const SizedBox(width: 8),
-                _summaryPill(
-                  '${s['missing']}',
-                  S.t(context, 'Missed'),
-                  Colors.purple.shade400,
-                  Colors.purple.shade50,
-                ),
-                const SizedBox(width: 8),
-                _summaryPill(
-                  '${s['absent']}',
-                  S.t(context, 'Absent'),
-                  Colors.red.shade600,
-                  Colors.red.shade50,
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: () => setState(() {
-                _trip = null;
-                _attendances = [];
-              }),
-              icon: const Icon(Icons.restart_alt_rounded),
-              label: Text(S.t(context, 'New Trip')),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  /// Shared amber warning banner used for GPS-lost and off-route states.
-  Widget _buildWarningBanner({
-    required IconData icon,
-    required String message,
-    required bool showNextStop,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: Colors.amber.shade800.withValues(alpha: isDark ? 0.18 : 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isDark ? Colors.amber.shade300 : Colors.amber.shade800,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (showNextStop) ...[
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _processing ? null : _manualNextStop,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.amber.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              child: Text(S.t(context, 'Next Stop →')),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
-  Widget _summaryPill(
-    String count,
-    String label,
-    Color textColor,
-    Color bgColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: textColor.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            count,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildAttendanceView(ThemeData theme) {
     final currentIdx = (_trip!['current_stop_index'] as num).toInt();
@@ -966,11 +725,6 @@ class _ConductorAttendanceScreenState
         _trip!['state'] == 'ongoing' &&
         (_trip!['current_stop_index'] as num).toInt() < _stops.length - 1;
     final s = _stats();
-    final locColor = _gpsLost
-        ? Colors.amber.shade700
-        : _offRoute
-        ? Colors.red.shade600
-        : theme.colorScheme.primary;
 
     final filtered = _attendances.where((a) {
       final matchesState = _filterState == null || a.state == _filterState;
@@ -984,150 +738,36 @@ class _ConductorAttendanceScreenState
       children: [
         // ── Warning banners ────────────────────────────────────────────────
         if (_gpsLost)
-          _buildWarningBanner(
+          WarningBanner(
             icon: Icons.gps_off_rounded,
             message: S.t(context, 'GPS lost — auto-advance paused.'),
             showNextStop: showNextStop,
+            processing: _processing,
+            onNextStop: _manualNextStop,
           ),
         if (_offRoute && !_gpsLost)
-          _buildWarningBanner(
+          WarningBanner(
             icon: Icons.map_outlined,
             message: S.t(context, 'Bus is off the designated route.'),
             showNextStop: showNextStop,
+            processing: _processing,
+            onNextStop: _manualNextStop,
           ),
 
         // ── Current location card ──────────────────────────────────────────
-        Container(
-          margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(
-            color: isDark
-                ? theme.colorScheme.surfaceContainerHigh
-                : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: locColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _gpsLost
-                      ? Icons.gps_off_rounded
-                      : _offRoute
-                      ? Icons.map_outlined
-                      : Icons.location_on_rounded,
-                  size: 18,
-                  color: locColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      S.t(context, 'Current Location:'),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _offRoute
-                          ? 'Off Route'
-                          : currentStop?['name'] as String? ?? 'Starting',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: _offRoute
-                            ? Colors.red.shade700
-                            : theme.colorScheme.onSurface,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (isLastStop)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    S.t(context, 'Final Stop'),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+        LocationStatusCard(
+          gpsLost: _gpsLost,
+          offRoute: _offRoute,
+          stopName: currentStop?['name'] as String?,
+          isLastStop: isLastStop,
         ),
 
         // ── Stats chips ────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 6, 8),
-          child: Row(
-            children: [
-              _statChip(
-                S.t(context, 'Total'),
-                _attendances.length,
-                null,
-                null,
-                theme,
-              ),
-              _statChip(
-                S.t(context, 'Present'),
-                s['present']!,
-                Colors.green.shade700,
-                AttendanceState.present,
-                theme,
-              ),
-              _statChip(
-                S.t(context, 'Missed'),
-                s['missing']!,
-                Colors.purple.shade400,
-                AttendanceState.missing,
-                theme,
-              ),
-              _statChip(
-                S.t(context, 'Absent'),
-                s['absent']!,
-                theme.colorScheme.error,
-                AttendanceState.absent,
-                theme,
-              ),
-              _statChip(
-                S.t(context, 'Waiting'),
-                s['waiting']!,
-                Colors.amber.shade700,
-                AttendanceState.waiting,
-                theme,
-              ),
-            ],
-          ),
+        AttendanceStatsChips(
+          total: _attendances.length,
+          stats: s,
+          selected: _filterState,
+          onSelected: (v) => setState(() => _filterState = v),
         ),
 
         // ── Search ─────────────────────────────────────────────────────────
@@ -1204,7 +844,10 @@ class _ConductorAttendanceScreenState
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
                     itemCount: filtered.length,
-                    itemBuilder: (_, i) => _buildCard(filtered[i], theme),
+                    itemBuilder: (_, i) => AttendanceCard(
+                        entry: filtered[i],
+                        onTap: () => _manualMarkPresent(filtered[i]),
+                      ),
                   ),
           ),
         ),
@@ -1212,237 +855,8 @@ class _ConductorAttendanceScreenState
     );
   }
 
-  Widget _statChip(
-    String label,
-    int count,
-    Color? color,
-    AttendanceState? filterValue,
-    ThemeData theme,
-  ) {
-    final isSelected = _filterState == filterValue;
-    final isDark = theme.brightness == Brightness.dark;
-    final chipColor = color ?? theme.colorScheme.primary;
 
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.only(right: 6),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          decoration: BoxDecoration(
-            color: isSelected
-                ? chipColor
-                : (isDark
-                      ? theme.colorScheme.surfaceContainerHigh
-                      : Colors.white),
-            borderRadius: BorderRadius.circular(12),
-            border: isSelected
-                ? null
-                : Border.all(color: theme.colorScheme.outlineVariant, width: 1),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: chipColor.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.15 : 0.06,
-                      ),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(
-                () => _filterState = isSelected ? null : filterValue,
-              ),
-              splashColor: isSelected
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : chipColor.withValues(alpha: 0.1),
-              highlightColor: isSelected
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : chipColor.withValues(alpha: 0.05),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.85)
-                            : theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '$count',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: isSelected ? Colors.white : chipColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildCard(AttendanceEntry item, ThemeData theme) {
-    final color = _stateColor(item.state);
-    final isDark = theme.brightness == Brightness.dark;
-    final stateLabel = switch (item.state) {
-      AttendanceState.present => S.t(context, 'Present'),
-      AttendanceState.missing => S.t(context, 'Missed'),
-      AttendanceState.absent => S.t(context, 'Absent'),
-      AttendanceState.waiting => S.t(context, 'Waiting'),
-    };
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap:
-            item.state == AttendanceState.waiting ||
-                item.state == AttendanceState.missing ||
-                item.state == AttendanceState.absent
-            ? () => _manualMarkPresent(item)
-            : null,
-        splashColor: color.withValues(alpha: 0.06),
-        highlightColor: color.withValues(alpha: 0.03),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: isDark
-                ? theme.colorScheme.surfaceContainerHigh
-                : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Avatar with initial
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Name + Stop
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            item.stopName,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              // Status badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.35),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  stateLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _stateColor(AttendanceState state) => switch (state) {
-    AttendanceState.present => Colors.green.shade700,
-    AttendanceState.missing => Colors.purple.shade400,
-    AttendanceState.absent => Colors.red.shade700,
-    AttendanceState.waiting => Colors.amber.shade700,
-  };
 
   Map<String, int> _stats() => AttendanceMachine.stats(_attendances);
 }
