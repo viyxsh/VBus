@@ -42,7 +42,7 @@ Stream<AuthUser?> authState(Ref ref) {
     debugPrint('[AUTH] isValidUniversityEmail=$isValid');
     if (!isValid) {
       debugPrint('[AUTH] invalid email domain, signing out');
-      supabase.auth.signOut();
+      await supabase.auth.signOut();
       return null;
     }
 

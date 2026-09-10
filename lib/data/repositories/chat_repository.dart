@@ -94,15 +94,23 @@ class ChatRepository {
     RealtimeChannel? channel;
 
     if (AppConfig.demoMode) {
-      // No realtime; seed from the demo store and let sendMessage() push here.
+      // No realtime; seed from the demo store and let sendMessage() push to
+      // the shared broadcast controller. Each listener gets the current
+      // snapshot first, and a listener cancelling can never break sendMessage
+      // (broadcast controllers stay open for the session).
       final store = _demoMsgs[roomId] ??= [];
-      _demoCtrls[roomId] = controller;
-      controller.onListen = () => controller.add(List.unmodifiable(store));
-      controller.onCancel = () async {
-        if (_demoCtrls[roomId] == controller) _demoCtrls.remove(roomId);
-        await controller.close();
-      };
-      return controller.stream;
+      final ctrl = _demoCtrls.putIfAbsent(
+        roomId,
+        () => StreamController<List<ChatMessage>>.broadcast(),
+      );
+      return Stream<List<ChatMessage>>.multi((listener) {
+        listener.add(List.unmodifiable(store));
+        final sub = ctrl.stream.listen(
+          listener.add,
+          onError: listener.addError,
+        );
+        listener.onCancel = () => sub.cancel();
+      });
     }
 
     Future<void> init() async {
