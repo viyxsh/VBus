@@ -1,16 +1,14 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
-import '../../../../core/widgets/map_markers.dart';
 import '../../../../core/widgets/osm_map_view.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../../../core/services/route_service.dart';
 import '../../../../../data/repositories/tracking_repository.dart';
@@ -23,7 +21,6 @@ class ConductorMapTab extends ConsumerStatefulWidget {
 }
 
 class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
-  GoogleMapController? _mapController;
   final fm.MapController _osmController = fm.MapController();
 
   String _busId = '';
@@ -40,8 +37,6 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   StreamSubscription<List<Map<String, dynamic>>>? _tripSub;
   LatLng? _busMarkerPosition; // stop-based fallback when GPS unavailable
 
-  BitmapDescriptor? _stopIcon;
-  BitmapDescriptor? _busIcon;
 
   @override
   void initState() {
@@ -53,7 +48,6 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   void dispose() {
     _locationSub?.cancel();
     _tripSub?.cancel();
-    _mapController?.dispose();
     _osmController.dispose();
     super.dispose();
   }
@@ -80,15 +74,6 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
       );
       _routePoints = await RouteService.getRoutePoints(_stops);
 
-      _stopIcon = await circleMarkerIcon(
-        fill: Colors.white,
-        stroke: const Color(0xFF37474F),
-        size: 32,
-      );
-      // Start SVG icon creation concurrently after several awaits (first frame is built).
-      final busIconFuture = mounted
-          ? busMarkerIconFromSvg(context, 32, debugTag: '[CONDUCTOR_MAP]')
-          : busMarkerIconFallback(32);
 
       final trip = await tracking.ongoingTripForBus(_busId);
 
@@ -109,7 +94,6 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
       // Broadcast to Supabase only during active trips.
       await _startTracking();
 
-      _busIcon = await busIconFuture;
       if (mounted) {
         setState(() => _loading = false);
         if (kIsWeb) _fitOsmBounds();
@@ -141,13 +125,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     if (lat == 0 && lng == 0) return;
     final pos = LatLng(lat, lng);
     if (mounted) setState(() => _busMarkerPosition = pos);
-    if (kIsWeb) {
-      OsmMapHelpers.centerOn(_osmController, pos);
-      return;
-    }
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(CameraPosition(target: pos, zoom: 15)),
-    );
+    OsmMapHelpers.centerOn(_osmController, pos);
   }
 
   Future<void> _startTracking() async {
@@ -221,31 +199,15 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     if (_hasActiveTrip) {
       final target = _myLocation ?? _busMarkerPosition;
       if (target != null) {
-        if (kIsWeb) {
-          OsmMapHelpers.centerOn(_osmController, target);
-          return;
-        }
-        _mapController?.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: target, zoom: 15),
-          ),
-        );
+        OsmMapHelpers.centerOn(_osmController, target);
         return;
       }
     }
-    if (kIsWeb) {
-      _fitOsmBounds();
-      return;
-    }
-    _fitBounds();
+    _fitOsmBounds();
   }
 
   // ─── Map helpers ──────────────────────────────────────────────────────────────
 
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-    _fitBounds();
-  }
 
   void _fitOsmBounds() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -300,93 +262,8 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     return markers;
   }
 
-  void _fitBounds() {
-    final valid = _stops
-        .where(
-          (s) =>
-              (s['latitude'] as num).toDouble() != 0 &&
-              (s['longitude'] as num).toDouble() != 0,
-        )
-        .toList();
-    if (valid.isEmpty || _mapController == null) return;
-    double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-    for (final s in valid) {
-      final lat = (s['latitude'] as num).toDouble();
-      final lng = (s['longitude'] as num).toDouble();
-      minLat = min(minLat, lat);
-      maxLat = max(maxLat, lat);
-      minLng = min(minLng, lng);
-      maxLng = max(maxLng, lng);
-    }
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
-        ),
-        80,
-      ),
-    );
-  }
 
-  Set<Marker> _buildMarkers() {
-    if (_stopIcon == null) return {};
-    final markers = <Marker>{};
-    for (final s in _stops) {
-      final lat = (s['latitude'] as num).toDouble();
-      final lng = (s['longitude'] as num).toDouble();
-      if (lat == 0 && lng == 0) continue;
-      markers.add(
-        Marker(
-          markerId: MarkerId(s['id'] as String),
-          position: LatLng(lat, lng),
-          icon: _stopIcon!,
-          anchor: const Offset(0.5, 0.5),
-          infoWindow: InfoWindow(title: s['name'] as String),
-        ),
-      );
-    }
-    if (_busIcon != null) {
-      if (_myLocation != null) {
-        // Live GPS — full opacity
-        markers.add(
-          Marker(
-            markerId: const MarkerId('bus'),
-            position: _myLocation!,
-            icon: _busIcon!,
-            anchor: const Offset(0.5, 0.5),
-            zIndexInt: 2,
-            alpha: 1.0,
-          ),
-        );
-      } else if (_busMarkerPosition != null) {
-        // Stop-based estimate (manual advance, no GPS) — faded at same size
-        markers.add(
-          Marker(
-            markerId: const MarkerId('bus'),
-            position: _busMarkerPosition!,
-            icon: _busIcon!,
-            anchor: const Offset(0.5, 0.5),
-            zIndexInt: 2,
-            alpha: 0.55,
-          ),
-        );
-      }
-    }
-    return markers;
-  }
 
-  Set<Polyline> _buildPolylines() {
-    if (_routePoints.isEmpty) return {};
-    return {
-      Polyline(
-        polylineId: const PolylineId('route'),
-        points: _routePoints,
-        color: const Color(0xFF1A237E),
-        width: 5,
-      ),
-    };
-  }
 
   // ─── Build ────────────────────────────────────────────────────────────────────
 
@@ -397,30 +274,14 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                // Web uses OpenStreetMap via flutter_map (no API key needed);
-                // mobile uses Google Maps.
-                if (kIsWeb)
-                  Positioned.fill(
-                    child: OsmMapView(
-                      mapController: _osmController,
-                      routePoints: OsmMapHelpers.toOsmList(_routePoints),
-                      markers: _buildOsmMarkers(),
-                      onMapReady: _fitOsmBounds,
-                    ),
-                  )
-                else
-                  GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: LatLng(23.15, 77.15),
-                      zoom: 10,
-                    ),
-                    onMapCreated: _onMapCreated,
-                    markers: _buildMarkers(),
-                    polylines: _buildPolylines(),
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    padding: const EdgeInsets.only(bottom: 80),
+                Positioned.fill(
+                  child: OsmMapView(
+                    mapController: _osmController,
+                    routePoints: _routePoints,
+                    markers: _buildOsmMarkers(),
+                    onMapReady: _fitOsmBounds,
                   ),
+                ),
                 // GPS recenter button above the route list
                 Positioned(
                   right: 12,

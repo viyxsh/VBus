@@ -4,12 +4,11 @@ import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
-import '../../../../core/widgets/map_markers.dart';
 import '../../../../core/widgets/osm_map_view.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -29,7 +28,6 @@ class PassengerMapTab extends ConsumerStatefulWidget {
 }
 
 class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
-  GoogleMapController? _mapController;
   final fm.MapController _osmController = fm.MapController();
 
   String _busId = '';
@@ -66,10 +64,6 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   bool _loading = true;
   RealtimeChannel? _channel;
 
-  BitmapDescriptor? _stopIcon;
-  BitmapDescriptor? _myStopIcon;
-  BitmapDescriptor? _busIcon;
-  BitmapDescriptor? _pinIcon;
 
   @override
   void initState() {
@@ -81,7 +75,6 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   void dispose() {
     _channel?.unsubscribe();
     _tripSub?.cancel();
-    _mapController?.dispose();
     _osmController.dispose();
     super.dispose();
   }
@@ -110,22 +103,6 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
       _routePoints = await RouteService.getRoutePoints(_stops);
       _computeStopDistances();
 
-      _stopIcon = await circleMarkerIcon(
-        fill: Colors.white,
-        stroke: const Color(0xFF37474F),
-        size: 32,
-      );
-      _myStopIcon = await circleMarkerIcon(
-        fill: Colors.green.shade600,
-        stroke: Colors.white,
-        size: 32,
-        strokeWidth: 3,
-      );
-      _pinIcon = await customPinMarkerIcon(32);
-      final busIconFuture = mounted
-          ? busMarkerIconFromSvg(context, 32, debugTag: '[PASSENGER_MAP]')
-          : busMarkerIconFallback(32);
-
       final trip = await tracking.ongoingTripForBus(_busId);
 
       _hasActiveTrip = trip != null;
@@ -153,10 +130,9 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
           .read(passengerRepositoryProvider)
           .customPins(_busId);
 
-      _busIcon = await busIconFuture;
       if (mounted) {
         setState(() => _loading = false);
-        if (kIsWeb) _fitOsmBounds();
+        if (kIsWeb) _fitBounds();
       }
     } catch (e) {
       debugPrint('[PASSENGER_MAP] error: $e');
@@ -496,34 +472,18 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
 
   // ─── Map helpers ──────────────────────────────────────────────────────────────
 
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-    _fitBounds();
-  }
 
   void _centerOnBus() {
     if (_busLocation != null) {
-      if (kIsWeb) {
-        OsmMapHelpers.centerOn(_osmController, _busLocation!);
-        return;
-      }
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: _busLocation!, zoom: 15),
-        ),
-      );
+      OsmMapHelpers.centerOn(_osmController, _busLocation!);
     } else {
-      if (kIsWeb) {
-        _fitOsmBounds();
-        return;
-      }
       _fitBounds();
     }
   }
 
   /// Web (OpenStreetMap) equivalent of [_fitBounds] — safe to call before the
   /// flutter_map widget is ready; retries on the next frame if needed.
-  void _fitOsmBounds() {
+  void _fitBounds() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       try {
@@ -579,98 +539,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     return markers;
   }
 
-  void _fitBounds() {
-    final valid = _stops
-        .where(
-          (s) =>
-              (s['latitude'] as num).toDouble() != 0 &&
-              (s['longitude'] as num).toDouble() != 0,
-        )
-        .toList();
-    if (valid.isEmpty || _mapController == null) return;
-    double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-    for (final s in valid) {
-      final lat = (s['latitude'] as num).toDouble();
-      final lng = (s['longitude'] as num).toDouble();
-      minLat = min(minLat, lat);
-      maxLat = max(maxLat, lat);
-      minLng = min(minLng, lng);
-      maxLng = max(maxLng, lng);
-    }
-    // Include the live bus position so an off-route bus is never left off-screen.
-    if (_busLocation != null) {
-      minLat = min(minLat, _busLocation!.latitude);
-      maxLat = max(maxLat, _busLocation!.latitude);
-      minLng = min(minLng, _busLocation!.longitude);
-      maxLng = max(maxLng, _busLocation!.longitude);
-    }
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
-        ),
-        80,
-      ),
-    );
-  }
 
-  Set<Marker> _buildMarkers() {
-    if (_stopIcon == null) return {};
-    final markers = <Marker>{};
-    for (final s in _stops) {
-      final lat = (s['latitude'] as num).toDouble();
-      final lng = (s['longitude'] as num).toDouble();
-      if (lat == 0 && lng == 0) continue;
-      final isMyStop = s['id'] == _myStopId;
-      markers.add(
-        Marker(
-          markerId: MarkerId(s['id'] as String),
-          position: LatLng(lat, lng),
-          icon: isMyStop ? _myStopIcon! : _stopIcon!,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: isMyStop ? 3 : 0,
-          infoWindow: InfoWindow(title: s['name'] as String),
-        ),
-      );
-    }
-    if (_busLocation != null && _busIcon != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('bus'),
-          position: _busLocation!,
-          icon: _busIcon!,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: 2,
-        ),
-      );
-    }
-    // Custom pins
-    if (_pinIcon != null) {
-      for (final pin in _customPins) {
-        final id = pin['id'] as String;
-        markers.add(
-          Marker(
-            markerId: MarkerId('pin_$id'),
-            position: LatLng(
-              (pin['latitude'] as num).toDouble(),
-              (pin['longitude'] as num).toDouble(),
-            ),
-            icon: _pinIcon!,
-            anchor: const Offset(0.5, 0.5),
-            zIndexInt: 1,
-            infoWindow: InfoWindow(
-              title: pin['label'] as String,
-              snippet:
-                  'Notify ${pin['notify_minutes_before']} min before · Tap to remove',
-              onTap: () => _deletePin(id, pin['label'] as String),
-            ),
-          ),
-        );
-      }
-    }
-    return markers;
-  }
 
   Widget _mapBtn(String svgPath, VoidCallback onTap, ThemeData theme) =>
       InkWell(
@@ -693,17 +562,6 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
         ),
       );
 
-  Set<Polyline> _buildPolylines() {
-    if (_routePoints.isEmpty) return {};
-    return {
-      Polyline(
-        polylineId: const PolylineId('route'),
-        points: _routePoints,
-        color: const Color(0xFF1A237E),
-        width: 5,
-      ),
-    };
-  }
 
   // ─── Build ────────────────────────────────────────────────────────────────────
 
@@ -731,34 +589,15 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                // Web uses OpenStreetMap via flutter_map (no API key needed);
-                // mobile uses Google Maps.
-                if (kIsWeb)
-                  Positioned.fill(
-                    child: OsmMapView(
-                      mapController: _osmController,
-                      routePoints: OsmMapHelpers.toOsmList(_routePoints),
-                      markers: _buildOsmMarkers(),
-                      onMapReady: _fitOsmBounds,
-                      onLongPress: (p) =>
-                          _addPin(LatLng(p.latitude, p.longitude)),
-                    ),
-                  )
-                else
-                  GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: LatLng(23.15, 77.15),
-                      zoom: 10,
-                    ),
-                    onMapCreated: _onMapCreated,
+                Positioned.fill(
+                  child: OsmMapView(
+                    mapController: _osmController,
+                    routePoints: _routePoints,
+                    markers: _buildOsmMarkers(),
+                    onMapReady: _fitBounds,
                     onLongPress: _addPin,
-                    markers: _buildMarkers(),
-                    polylines: _buildPolylines(),
-                    myLocationEnabled: false,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    padding: const EdgeInsets.only(bottom: 80),
                   ),
+                ),
                 // GPS button — centres on the bus, not the passenger
                 Positioned(
                   right: 12,

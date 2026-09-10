@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -81,18 +80,13 @@ class OsmMapView extends StatelessWidget {
   }
 }
 
-/// Conversion + camera + marker helpers shared by the web map screens.
+/// Camera + marker helpers shared by the map screens.
 abstract final class OsmMapHelpers {
-  static ll.LatLng toOsm(gmaps.LatLng p) => ll.LatLng(p.latitude, p.longitude);
-
-  static List<ll.LatLng> toOsmList(List<gmaps.LatLng> points) =>
-      points.map(toOsm).toList();
-
   /// Fits [controller] to [stops] (+ optional bus position). No-op when empty.
   static void fitBounds(
     fm.MapController controller,
     List<Map<String, dynamic>> stops, {
-    gmaps.LatLng? bus,
+    ll.LatLng? bus,
   }) {
     final valid = stops.where((s) {
       final lat = (s['latitude'] as num).toDouble();
@@ -135,10 +129,10 @@ abstract final class OsmMapHelpers {
 
   static void centerOn(
     fm.MapController controller,
-    gmaps.LatLng target, {
+    ll.LatLng target, {
     double zoom = 15,
   }) {
-    controller.move(toOsm(target), zoom);
+    controller.move(target, zoom);
   }
 
   // ─── Markers (styled to match the mobile BitmapDescriptor icons) ───
