@@ -37,6 +37,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
   StreamSubscription<List<Map<String, dynamic>>>? _tripSub;
   LatLng? _busMarkerPosition; // stop-based fallback when GPS unavailable
 
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +73,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
         ', last: ${_stops.isNotEmpty ? _stops.last['name'] : 'none'}',
       );
       _routePoints = await RouteService.getRoutePoints(_stops);
+
 
       final trip = await tracking.ongoingTripForBus(_busId);
 
@@ -206,6 +208,7 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
 
   // ─── Map helpers ──────────────────────────────────────────────────────────────
 
+
   void _fitOsmBounds() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -258,6 +261,9 @@ class _ConductorMapTabState extends ConsumerState<ConductorMapTab> {
     }
     return markers;
   }
+
+
+
 
   // ─── Build ────────────────────────────────────────────────────────────────────
 

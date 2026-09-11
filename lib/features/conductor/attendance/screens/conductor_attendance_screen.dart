@@ -712,6 +712,10 @@ class _ConductorAttendanceScreenState
 
   // ─── Sub-views ───────────────────────────────────────────────────────────────
 
+
+
+
+
   Widget _buildAttendanceView(ThemeData theme) {
     final currentIdx = (_trip!['current_stop_index'] as num).toInt();
     final currentStop = currentIdx < _stops.length ? _stops[currentIdx] : null;
@@ -841,15 +845,18 @@ class _ConductorAttendanceScreenState
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
                     itemCount: filtered.length,
                     itemBuilder: (_, i) => AttendanceCard(
-                      entry: filtered[i],
-                      onTap: () => _manualMarkPresent(filtered[i]),
-                    ),
+                        entry: filtered[i],
+                        onTap: () => _manualMarkPresent(filtered[i]),
+                      ),
                   ),
           ),
         ),
       ],
     );
   }
+
+
+
 
   Map<String, int> _stats() => AttendanceMachine.stats(_attendances);
 }

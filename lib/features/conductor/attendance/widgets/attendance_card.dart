@@ -18,7 +18,11 @@ class AttendanceCard extends StatelessWidget {
   final AttendanceEntry entry;
   final VoidCallback onTap;
 
-  const AttendanceCard({super.key, required this.entry, required this.onTap});
+  const AttendanceCard({
+    super.key,
+    required this.entry,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

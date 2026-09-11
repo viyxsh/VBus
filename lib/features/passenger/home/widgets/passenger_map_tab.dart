@@ -64,6 +64,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
   bool _loading = true;
   RealtimeChannel? _channel;
 
+
   @override
   void initState() {
     super.initState();
@@ -471,6 +472,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
 
   // ─── Map helpers ──────────────────────────────────────────────────────────────
 
+
   void _centerOnBus() {
     if (_busLocation != null) {
       OsmMapHelpers.centerOn(_osmController, _busLocation!);
@@ -537,6 +539,8 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
     return markers;
   }
 
+
+
   Widget _mapBtn(String svgPath, VoidCallback onTap, ThemeData theme) =>
       InkWell(
         onTap: onTap,
@@ -557,6 +561,7 @@ class _PassengerMapTabState extends ConsumerState<PassengerMapTab> {
           ),
         ),
       );
+
 
   // ─── Build ────────────────────────────────────────────────────────────────────
 
