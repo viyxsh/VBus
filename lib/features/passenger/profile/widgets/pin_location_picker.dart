@@ -1,8 +1,10 @@
+import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/services/route_service.dart';
 import '../../../../core/widgets/lottie_widgets.dart';
@@ -21,6 +23,7 @@ class PinLocationPicker extends ConsumerStatefulWidget {
 }
 
 class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
+  GoogleMapController? _mapController;
   final fm.MapController _osmController = fm.MapController();
   List<Map<String, dynamic>> _stops = [];
   List<LatLng> _routePoints = [];
@@ -35,6 +38,7 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
 
   @override
   void dispose() {
+    _mapController?.dispose();
     _osmController.dispose();
     super.dispose();
   }
@@ -50,11 +54,43 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
     }
     if (mounted) {
       setState(() => _loading = false);
-      _fitOsmBounds();
+      if (kIsWeb) _fitOsmBounds();
     }
   }
 
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+    _fitBounds();
+  }
 
+  void _fitBounds() {
+    final valid = _stops
+        .where(
+          (s) =>
+              (s['latitude'] as num).toDouble() != 0 &&
+              (s['longitude'] as num).toDouble() != 0,
+        )
+        .toList();
+    if (valid.isEmpty || _mapController == null) return;
+    double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    for (final s in valid) {
+      final lat = (s['latitude'] as num).toDouble();
+      final lng = (s['longitude'] as num).toDouble();
+      minLat = min(minLat, lat);
+      maxLat = max(maxLat, lat);
+      minLng = min(minLng, lng);
+      maxLng = max(maxLng, lng);
+    }
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        80,
+      ),
+    );
+  }
 
   void _fitOsmBounds() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,7 +131,48 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
     return markers;
   }
 
+  Set<Marker> _buildMarkers() {
+    final markers = <Marker>{};
+    for (final s in _stops) {
+      final lat = (s['latitude'] as num).toDouble();
+      final lng = (s['longitude'] as num).toDouble();
+      if (lat == 0 && lng == 0) continue;
+      markers.add(
+        Marker(
+          markerId: MarkerId(s['id'] as String),
+          position: LatLng(lat, lng),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+          infoWindow: InfoWindow(title: s['name'] as String),
+        ),
+      );
+    }
+    if (_picked != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('picked'),
+          position: _picked!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueOrange,
+          ),
+        ),
+      );
+    }
+    return markers;
+  }
 
+  Set<Polyline> _buildPolylines() {
+    if (_routePoints.isEmpty) return {};
+    return {
+      Polyline(
+        polylineId: const PolylineId('route'),
+        points: _routePoints,
+        color: const Color(0xFF1A237E),
+        width: 5,
+      ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,13 +186,29 @@ class _PinLocationPickerState extends ConsumerState<PinLocationPicker> {
           ? const Center(child: LottieLoading())
           : Stack(
               children: [
-                OsmMapView(
-                  mapController: _osmController,
-                  routePoints: _routePoints,
-                  markers: _buildOsmMarkers(),
-                  onMapReady: _fitOsmBounds,
-                  onTap: (p) => setState(() => _picked = p),
-                ),
+                if (kIsWeb)
+                  OsmMapView(
+                    mapController: _osmController,
+                    routePoints: OsmMapHelpers.toOsmList(_routePoints),
+                    markers: _buildOsmMarkers(),
+                    onMapReady: _fitOsmBounds,
+                    onTap: (p) => setState(
+                      () => _picked = LatLng(p.latitude, p.longitude),
+                    ),
+                  )
+                else
+                  GoogleMap(
+                    initialCameraPosition: const CameraPosition(
+                      target: LatLng(23.15, 77.15),
+                      zoom: 10,
+                    ),
+                    onMapCreated: _onMapCreated,
+                    onTap: (pos) => setState(() => _picked = pos),
+                    markers: _buildMarkers(),
+                    polylines: _buildPolylines(),
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                  ),
                 Positioned(
                   top: 12,
                   left: 12,
