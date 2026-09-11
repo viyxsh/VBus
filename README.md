@@ -42,7 +42,7 @@ VBUS replaces manual attendance, paper seat booking, and ad-hoc WhatsApp groups 
 | State management | Riverpod 2.x (code generation) |
 | Navigation | go_router |
 | Backend | Supabase (PostgreSQL, Auth, Realtime, Storage) |
-| Maps | flutter_map (OpenStreetMap tiles) + OSRM (free road-following routing) |
+| Maps | Google Maps Flutter + OSRM (free road-following routing) |
 | OCR | Google ML Kit Text Recognition |
 | Translation | Google ML Kit On-Device Translation (Hindi/English) |
 | Notifications | flutter_local_notifications |
@@ -202,6 +202,7 @@ Row-level security is enabled on all public tables. Conductor write operations g
 
 - Flutter SDK 3.8.1 or later
 - A Supabase project with the schema applied
+- A Google Cloud Platform project with Maps SDK for Android and Maps SDK for iOS enabled
 - Google OAuth credentials configured for passenger sign-in
 - Android NDK 27.0.12077973
 - iOS deployment target 14.0 or later with CocoaPods installed
@@ -219,7 +220,19 @@ Create `.env.json` at the project root (this file is gitignored):
 }
 ```
 
-No maps API key is needed: the map renders OpenStreetMap tiles through flutter_map on every platform.
+Add your Google Maps API key in two places:
+
+**Android**, in `android/app/src/main/AndroidManifest.xml`:
+```xml
+<meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="YOUR_MAPS_API_KEY"/>
+```
+
+**iOS**, in `ios/Runner/AppDelegate.swift`:
+```swift
+GMSServices.provideAPIKey("YOUR_MAPS_API_KEY")
+```
 
 Configure Supabase:
 - Enable Email and Google OAuth providers in Authentication settings
@@ -345,7 +358,7 @@ The test suite covers:
 
 **Phone calls on simulator**: The iOS Simulator has no Phone app, so the in-chat call button shows a not-supported snackbar. It works on physical devices.
 
-**Maps on simulator**: Map tiles may render slowly on first load while the simulator warms up its network stack. Everything works on physical devices, the Android emulator, and browsers.
+**Maps on simulator**: Google Maps tiles may not render on the iOS Simulator. Everything works on physical devices and the Android emulator.
 
 **GPS attendance**: Automatic stop advancement needs a real device GPS signal. On emulators with mocked location the attendance screen will not advance stops by itself.
 
