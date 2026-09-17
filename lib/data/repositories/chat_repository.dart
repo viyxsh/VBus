@@ -353,7 +353,18 @@ class ChatRepository {
       if (broadcastData != null) broadcastData['id'] as String,
       if (dmData != null) dmData['id'] as String,
     ];
-    final lastByRoom = await _lastMessageByRoom(roomIds, since: approvedAt);
+    // Pre-approval chatter is hidden from broadcast previews only; the
+    // direct room's history is the passenger's own, so it is never filtered.
+    final broadcastRoomId = broadcastData?['id'] as String?;
+    final previews = await Future.wait([
+      for (final id in roomIds)
+        _lastMessageByRoom([
+          id,
+        ], since: id == broadcastRoomId ? approvedAt : null),
+    ]);
+    final lastByRoom = <String, Map<String, dynamic>>{
+      for (final p in previews) ...p,
+    };
 
     InboxRoom toRoom(
       String id,
