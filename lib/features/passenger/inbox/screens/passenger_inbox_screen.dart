@@ -167,22 +167,31 @@ class _PassengerInboxScreenState extends ConsumerState<PassengerInboxScreen> {
                         error: (e, _) => _buildError(theme),
                         data: (inbox) => RefreshIndicator(
                           onRefresh: _refresh,
-                          child: ListView(
-                            padding: const EdgeInsets.only(top: 14, bottom: 20),
-                            children: [
-                              if (inbox.broadcast != null)
-                                _buildTile(inbox.broadcast!, theme)
-                              else
-                                _buildUnavailableTile(
-                                  'Bus ${inbox.busNumber}',
-                                  'assets/icons/passengers.svg',
-                                  theme,
-                                ),
-                              if (inbox.direct != null)
-                                _buildTile(inbox.direct!, theme)
-                              else
-                                _buildStartDMTile(inbox, theme),
-                            ],
+                          // The card Container below has a background color,
+                          // which would otherwise hide the tiles' ink splashes
+                          // (they paint on the nearest Material ancestor).
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: ListView(
+                              padding: const EdgeInsets.only(
+                                top: 14,
+                                bottom: 20,
+                              ),
+                              children: [
+                                if (inbox.broadcast != null)
+                                  _buildTile(inbox.broadcast!, theme)
+                                else
+                                  _buildUnavailableTile(
+                                    'Bus ${inbox.busNumber}',
+                                    'assets/icons/passengers.svg',
+                                    theme,
+                                  ),
+                                if (inbox.direct != null)
+                                  _buildTile(inbox.direct!, theme)
+                                else
+                                  _buildStartDMTile(inbox, theme),
+                              ],
+                            ),
                           ),
                         ),
                       ),
