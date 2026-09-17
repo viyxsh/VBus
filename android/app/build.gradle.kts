@@ -15,6 +15,16 @@ rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use 
 }
 val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
+// Release signing credentials come from the gitignored android/key.properties;
+// when absent we fall back to the debug keystore so dev builds keep working.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+
 android {
     namespace = "com.vitbhopal.vbusf"
     compileSdk = flutter.compileSdkVersion
@@ -56,9 +66,24 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

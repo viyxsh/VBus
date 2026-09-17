@@ -2,6 +2,10 @@
 .env.json
 # Google Maps API key — injected at build time, never committed
 ios/Flutter/Secrets.xcconfig
+# Release signing credentials — never committed
+android/key.properties
+*.jks
+*.keystore
 
 # Local tooling
 .claude/

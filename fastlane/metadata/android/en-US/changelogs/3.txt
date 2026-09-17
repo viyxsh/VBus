@@ -1,0 +1,3 @@
+Initial GitHub release of VBUS, the VIT Bhopal University bus tracking app.
+
+For the complete change history, see the commit log.
