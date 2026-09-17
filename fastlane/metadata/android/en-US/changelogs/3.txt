@@ -4,7 +4,7 @@ First public release on GitHub. For everything before this release, see the comm
 
 - Realtime inbox: chat previews and unread counts now update live
 - Conductors can edit passenger seat allocations
-- Chat tiles use attached info sheet for room details
+- Chat and inbox titles localized in Hindi and English, with an info sheet for chat rooms
 - Web demo runs on OpenStreetMap tiles, no API key needed
 
 ### Fixed
