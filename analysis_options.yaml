@@ -10,6 +10,11 @@
 analyzer:
   plugins:
     - custom_lint
+  errors:
+    # custom_lint still registers through the legacy analyzer plugin system,
+    # which newer Dart SDKs deprecate. Ignore until custom_lint supports the
+    # new plugin API; the diagnostic points at this file so CI would fail on it.
+    analysis_options_deprecated_plugins: ignore
   exclude:
     - build/**
     - android/**
