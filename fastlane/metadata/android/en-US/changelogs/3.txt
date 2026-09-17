@@ -1,3 +1,19 @@
-Initial GitHub release of VBUS, the VIT Bhopal University bus tracking app.
+First public release on GitHub. For everything before this release, see the commit history.
 
-For the complete change history, see the commit log.
+### New
+
+- Realtime inbox: chat previews and unread counts now update live
+- Conductors can edit passenger seat allocations
+- Chat tiles use attached info sheet for room details
+- Web demo runs on OpenStreetMap tiles, no API key needed
+
+### Fixed
+
+- Passenger approval now refreshes UI and counts correctly
+- Stale chat previews and unread counts; stream errors surface instead of hanging silently
+- Session error on splash now shows a retry button
+- Inbox tiles show ink splash feedback again
+
+### Under the hood
+
+- Android toolchain upgraded to Gradle 8.14.3, AGP 8.11.1, Kotlin 2.2.20
