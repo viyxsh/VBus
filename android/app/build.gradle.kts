@@ -8,12 +8,14 @@ plugins {
 }
 
 // Read secrets (e.g. the Google Maps API key) from the gitignored
-// local.properties so they never live in version control.
+// local.properties, falling back to the environment (used by CI builds)
+// so they never live in version control.
 val localProperties = Properties()
 rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use {
     localProperties.load(it)
 }
-val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
+val mapsApiKey: String =
+    localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
 
 // Release signing credentials come from the gitignored android/key.properties;
 // when absent we fall back to the debug keystore so dev builds keep working.
