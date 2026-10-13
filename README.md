@@ -299,7 +299,7 @@ A browser build is published so people can try the app without installing anythi
 
 **Live link:** https://viyxsh.github.io/VBus/
 
-The web build is a **read-only live prototype**. It runs against the real Supabase project but never writes to it. Seat bookings, chat messages, pins, profile edits, and every conductor trip and attendance action return a simulated success, so the link can be shared without worrying about someone changing real data. Anything a visitor does resets when the page reloads.
+The web build is a **read-only live prototype**. It runs against the real Supabase project but never writes to it. Seat bookings, seat reservations, chat messages, pins, profile edits, and every conductor trip and attendance action return a simulated success, so the link can be shared without worrying about someone changing real data. Anything a visitor does resets when the page reloads.
 
 ### How demo mode works
 
@@ -307,7 +307,7 @@ The web build is a **read-only live prototype**. It runs against the real Supaba
 
 - Every repository write is intercepted and simulated; nothing reaches the backend.
 - Chat messages and custom pins are held in memory for the session, then clear on reload.
-- The seat screen shows pre-filled taken seats and the booking window is always open.
+- The seat screen shows pre-filled taken seats, guaranteed faculty-reserved rows, and a couple of reserved (starred) seats. The booking window is always open, and the conductor's reservation approve/reject sheet runs on the same in-memory data.
 - The conductor attendance page shows a generated roster whose states track the live trip's position.
 - Map/GPS, notifications, and ML Kit OCR (none of which run on web) are guarded behind `kIsWeb`.
 

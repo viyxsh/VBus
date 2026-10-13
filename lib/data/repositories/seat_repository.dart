@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/constants/app_config.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../../main.dart';
+import 'bus_repository.dart';
 
 part 'seat_repository.g.dart';
 
@@ -47,6 +48,9 @@ class SeatRepository {
         .eq('id', userId)
         .single();
     final bus = profile['buses'] as Map;
+    if (AppConfig.demoMode) {
+      BusRepository.applyDemoFacultyRows(profile['bus_id'] as String, bus);
+    }
     debugPrint(
       '[SEAT_REPO] seatBusInfo: '
       'bus_id=${profile['bus_id']} '
@@ -86,15 +90,12 @@ class SeatRepository {
 
     final leftSeats = (bus['left_seats'] as num).toInt();
     final studentSeats = (bus['student_seats'] as num).toInt();
-    // Mirror seatBusInfo's demo guarantee of at least one faculty row each side.
-    final facultyRowsLeft = max(
-      1,
-      ((bus['faculty_reserved_rows_left'] as num?) ?? 0).toInt(),
-    );
-    final facultyRowsRight = max(
-      1,
-      ((bus['faculty_reserved_rows_right'] as num?) ?? 0).toInt(),
-    );
+    // Mirror seatBusInfo's demo faculty-row handling: clamp to one row per
+    // side and honour the bus-controls override from this session.
+    BusRepository.applyDemoFacultyRows(busId, bus);
+    final facultyRowsLeft = (bus['faculty_reserved_rows_left'] as num).toInt();
+    final facultyRowsRight = (bus['faculty_reserved_rows_right'] as num)
+        .toInt();
 
     // Reconstruct the same seat-number zones the screen lays out.
     final facultyLeftSeats = facultyRowsLeft * 2;
