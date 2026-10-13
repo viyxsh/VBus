@@ -307,7 +307,7 @@ The web build is a **read-only live prototype**. It runs against the real Supaba
 
 - Every repository write is intercepted and simulated; nothing reaches the backend.
 - Chat messages and custom pins are held in memory for the session, then clear on reload.
-- The seat screen shows pre-filled taken seats, guaranteed faculty-reserved rows, and a couple of reserved (starred) seats. The booking window is always open, and the conductor's reservation approve/reject sheet runs on the same in-memory data.
+- The seat screen shows the real bus layout (18 left + 30 right + 6 back), pre-filled taken seats, a four-row faculty zone per side, and a couple of reserved (starred) seats. The booking window is always open, and the conductor's reservation approve/reject sheet runs on the same in-memory data.
 - The conductor attendance page shows a generated roster whose states track the live trip's position.
 - Map/GPS, notifications, and ML Kit OCR (none of which run on web) are guarded behind `kIsWeb`.
 

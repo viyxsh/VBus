@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -21,18 +19,22 @@ class BusRepository {
   // session so a demo conductor's change is visible without touching the DB.
   static final Map<String, Map<String, int>> demoFacultyRows = {};
 
-  /// Clamps the bus's faculty rows to at least one per side and applies any
-  /// demo override from the bus-controls sheet. Only used in demo mode, where
-  /// the seed bus has 0 faculty rows configured.
-  static void applyDemoFacultyRows(String busId, Map bus) {
-    bus['faculty_reserved_rows_left'] = max(
-      1,
-      ((bus['faculty_reserved_rows_left'] as num?) ?? 0).toInt(),
-    );
-    bus['faculty_reserved_rows_right'] = max(
-      1,
-      ((bus['faculty_reserved_rows_right'] as num?) ?? 0).toInt(),
-    );
+  /// Pins the demo bus layout and faculty rows. Only used in demo mode.
+  ///
+  /// The seed row for the demo student's bus says student_seats = 44, which
+  /// lays out 38 right seats before the back bench; the real buses seat
+  /// 18 left + 30 right + 6 back, so demo mode pins that layout. A bus with
+  /// no faculty rows configured (the demo bus has 0) gets four rows per side
+  /// (L1-L8 and R1-R12) so the faculty zone is visible; a bus with real
+  /// configured rows keeps them. An override saved from the bus-controls
+  /// sheet in this session always wins.
+  static void applyDemoBusConfig(String busId, Map bus) {
+    bus['left_seats'] = 18;
+    bus['student_seats'] = 36;
+    final dbLeft = ((bus['faculty_reserved_rows_left'] as num?) ?? 0).toInt();
+    final dbRight = ((bus['faculty_reserved_rows_right'] as num?) ?? 0).toInt();
+    bus['faculty_reserved_rows_left'] = dbLeft > 0 ? dbLeft : 4;
+    bus['faculty_reserved_rows_right'] = dbRight > 0 ? dbRight : 4;
     final override = demoFacultyRows[busId];
     if (override != null) {
       bus['faculty_reserved_rows_left'] = override['left'];
@@ -88,7 +90,7 @@ class BusRepository {
         .single();
     final bus = data['buses'] as Map;
     if (AppConfig.demoMode) {
-      BusRepository.applyDemoFacultyRows(data['bus_id'] as String, bus);
+      BusRepository.applyDemoBusConfig(data['bus_id'] as String, bus);
     }
     debugPrint(
       '[BUS_REPO] conductorProfile loaded: '

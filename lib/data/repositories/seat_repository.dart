@@ -49,7 +49,7 @@ class SeatRepository {
         .single();
     final bus = profile['buses'] as Map;
     if (AppConfig.demoMode) {
-      BusRepository.applyDemoFacultyRows(profile['bus_id'] as String, bus);
+      BusRepository.applyDemoBusConfig(profile['bus_id'] as String, bus);
     }
     debugPrint(
       '[SEAT_REPO] seatBusInfo: '
@@ -88,11 +88,10 @@ class SeatRepository {
         .eq('id', busId)
         .single();
 
+    // Mirror seatBusInfo's demo bus handling: pin the layout and faculty rows.
+    BusRepository.applyDemoBusConfig(busId, bus);
     final leftSeats = (bus['left_seats'] as num).toInt();
     final studentSeats = (bus['student_seats'] as num).toInt();
-    // Mirror seatBusInfo's demo faculty-row handling: clamp to one row per
-    // side and honour the bus-controls override from this session.
-    BusRepository.applyDemoFacultyRows(busId, bus);
     final facultyRowsLeft = (bus['faculty_reserved_rows_left'] as num).toInt();
     final facultyRowsRight = (bus['faculty_reserved_rows_right'] as num)
         .toInt();
